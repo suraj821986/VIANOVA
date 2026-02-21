@@ -263,10 +263,23 @@ input {
     margin-top: 10px;
 }
 
+.checkout-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+}
+
 .trip-map {
     height: 280px;
     border: 1px solid var(--border);
     border-radius: 8px;
+    margin-top: 10px;
+}
+
+.feedback-form {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 8px;
     margin-top: 10px;
 }
 
@@ -527,6 +540,10 @@ input {
     }
 
     .checkout-form {
+        grid-template-columns: 1fr;
+    }
+
+    .feedback-form {
         grid-template-columns: 1fr;
     }
 }

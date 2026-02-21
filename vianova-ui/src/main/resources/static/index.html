@@ -98,6 +98,19 @@
                     <button class="primary" type="submit">Finalize Trip</button>
                 </form>
                 <div id="tripCheckoutMessage" class="hint"></div>
+                <div id="tripPinDisplay" class="hint"></div>
+                <div id="tripCompleteActions" class="checkout-actions hidden">
+                    <button id="completeTripBtn" class="secondary" type="button">Complete Trip</button>
+                </div>
+                <div id="tripFeedbackBlock" class="hidden">
+                    <h4>Trip Feedback</h4>
+                    <form id="tripFeedbackForm" class="feedback-form">
+                        <input id="tripTipAmount" type="number" step="0.1" min="0" placeholder="Tip amount (USD)" required>
+                        <input id="tripRating" type="number" min="1" max="5" placeholder="Rating (1-5)" required>
+                        <button class="primary" type="submit">Submit Feedback</button>
+                    </form>
+                    <div id="tripFeedbackMessage" class="hint"></div>
+                </div>
                 <div id="tripMap" class="trip-map"></div>
             </div>
         </div>
@@ -216,6 +229,14 @@
     const tripCheckoutForm = document.getElementById("tripCheckoutForm");
     const tripPaymentOption = document.getElementById("tripPaymentOption");
     const tripCheckoutMessage = document.getElementById("tripCheckoutMessage");
+    const tripPinDisplay = document.getElementById("tripPinDisplay");
+    const tripCompleteActions = document.getElementById("tripCompleteActions");
+    const completeTripBtn = document.getElementById("completeTripBtn");
+    const tripFeedbackBlock = document.getElementById("tripFeedbackBlock");
+    const tripFeedbackForm = document.getElementById("tripFeedbackForm");
+    const tripTipAmount = document.getElementById("tripTipAmount");
+    const tripRating = document.getElementById("tripRating");
+    const tripFeedbackMessage = document.getElementById("tripFeedbackMessage");
     const tripMapContainer = document.getElementById("tripMap");
     const sourceInput = document.getElementById("source");
     const destinationInput = document.getElementById("destination");
@@ -226,6 +247,8 @@
     let currentRideRequest = null;
     let selectedNegotiationDriver = null;
     let negotiatedFare = null;
+    let finalizedTripId = null;
+    let finalizedTripPin = null;
     let tripMap = null;
     let riderMarker = null;
     let driverMarker = null;
@@ -396,7 +419,15 @@
         tripCheckout.classList.add("hidden");
         tripCheckoutSummary.textContent = "";
         tripCheckoutMessage.textContent = "";
+        tripPinDisplay.textContent = "";
+        tripCompleteActions.classList.add("hidden");
+        tripFeedbackBlock.classList.add("hidden");
+        tripFeedbackMessage.textContent = "";
+        finalizedTripId = null;
+        finalizedTripPin = null;
         tripPaymentOption.value = "";
+        tripTipAmount.value = "";
+        tripRating.value = "";
         if (tripMap) {
             tripMap.remove();
             tripMap = null;
@@ -633,6 +664,12 @@
         riderOptionsBlock.classList.add("hidden");
         negotiationBlock.classList.add("hidden");
         negotiationActions.classList.add("hidden");
+        tripCompleteActions.classList.add("hidden");
+        tripFeedbackBlock.classList.add("hidden");
+        tripFeedbackMessage.textContent = "";
+        tripPinDisplay.textContent = "";
+        finalizedTripId = null;
+        finalizedTripPin = null;
         tripCheckout.classList.remove("hidden");
         tripCheckoutSummary.textContent = `Driver: ${selectedNegotiationDriver} | Final Fare: USD ${negotiatedFare.toFixed(2)}`;
         tripCheckoutMessage.textContent = "Choose payment option and finalize trip.";
@@ -701,7 +738,13 @@
             }
 
             const result = JSON.parse(body);
+            finalizedTripId = result.tripId;
+            finalizedTripPin = result.tripPin;
             tripCheckoutMessage.textContent = `${result.message}. Trip ID: ${result.tripId}`;
+            tripPinDisplay.textContent = `Your Trip PIN: ${result.tripPin}`;
+            tripCompleteActions.classList.remove("hidden");
+            tripFeedbackBlock.classList.add("hidden");
+            tripFeedbackMessage.textContent = "";
 
             const trackingResp = await fetch(`/api/rides/tracking?tripId=${encodeURIComponent(result.tripId)}`);
             const trackingBody = await trackingResp.text();
@@ -711,6 +754,73 @@
             }
         } catch (error) {
             tripCheckoutMessage.textContent = `Finalize request failed: ${error}`;
+        }
+    });
+
+    completeTripBtn.addEventListener("click", async () => {
+        if (!finalizedTripId || !finalizedTripPin) {
+            tripCheckoutMessage.textContent = "Finalize the trip first.";
+            return;
+        }
+        tripCheckoutMessage.textContent = "Completing trip...";
+        try {
+            const response = await fetch("/api/rides/complete", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    tripId: finalizedTripId,
+                    tripPin: finalizedTripPin
+                })
+            });
+            const body = await response.text();
+            if (!response.ok) {
+                tripCheckoutMessage.textContent = `Complete failed: ${body}`;
+                return;
+            }
+            const result = JSON.parse(body);
+            tripCheckoutMessage.textContent = result.message || "Trip completed successfully";
+            tripFeedbackBlock.classList.remove("hidden");
+
+            const trackingResp = await fetch(`/api/rides/tracking?tripId=${encodeURIComponent(finalizedTripId)}`);
+            const trackingBody = await trackingResp.text();
+            if (trackingResp.ok) {
+                const tracking = JSON.parse(trackingBody);
+                renderTripMap(tracking.riderLocation, tracking.driverLocation);
+            }
+        } catch (error) {
+            tripCheckoutMessage.textContent = `Complete request failed: ${error}`;
+        }
+    });
+
+    tripFeedbackForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        if (!finalizedTripId) {
+            tripFeedbackMessage.textContent = "Complete trip first.";
+            return;
+        }
+        const payload = {
+            tripId: finalizedTripId,
+            tipAmount: Number(tripTipAmount.value || 0),
+            rating: Number(tripRating.value || 0),
+            comment: ""
+        };
+
+        tripFeedbackMessage.textContent = "Submitting feedback...";
+        try {
+            const response = await fetch("/api/rides/feedback", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+            const body = await response.text();
+            if (!response.ok) {
+                tripFeedbackMessage.textContent = `Feedback failed: ${body}`;
+                return;
+            }
+            const result = JSON.parse(body);
+            tripFeedbackMessage.textContent = `${result.message}. Tip: USD ${Number(result.tipAmount).toFixed(2)}, Rating: ${result.rating}/5`;
+        } catch (error) {
+            tripFeedbackMessage.textContent = `Feedback request failed: ${error}`;
         }
     });
 

@@ -12,6 +12,7 @@ import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -20,6 +21,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class RideEstimateController {
 
     private static final Map<String, TripTracking> TRIPS = new ConcurrentHashMap<>();
+    private static final Map<String, String> TRIP_PINS = new ConcurrentHashMap<>();
 
     @PostMapping("/estimate")
     public ResponseEntity<?> estimateRide(@RequestBody RideEstimateRequest request) {
@@ -189,6 +191,7 @@ public class RideEstimateController {
         }
 
         String tripId = "TRIP-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        String tripPin = String.format("%04d", new Random().nextInt(10000));
         TripTracking tracking = new TripTracking(
                 tripId,
                 request.driverName(),
@@ -196,14 +199,76 @@ public class RideEstimateController {
                 request.destination(),
                 new Coordinates(37.7749, -122.4194),
                 new Coordinates(37.7842, -122.4094),
-                6
+                6,
+                "DRIVER_EN_ROUTE"
         );
         TRIPS.put(tripId, tracking);
+        TRIP_PINS.put(tripId, tripPin);
 
         return ResponseEntity.ok(Map.of(
                 "tripId", tripId,
+                "tripPin", tripPin,
                 "message", "Trip finalized successfully",
                 "status", "DRIVER_EN_ROUTE"
+        ));
+    }
+
+    @PostMapping("/complete")
+    public ResponseEntity<?> completeTrip(@RequestBody CompleteTripRequest request) {
+        if (request == null || isBlank(request.tripId()) || isBlank(request.tripPin())) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("tripId and tripPin are required");
+        }
+
+        TripTracking current = TRIPS.get(request.tripId());
+        if (current == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Trip not found");
+        }
+        String storedPin = TRIP_PINS.get(request.tripId());
+        if (storedPin == null || !storedPin.equals(request.tripPin())) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid trip PIN");
+        }
+
+        TripTracking completed = new TripTracking(
+                current.tripId(),
+                current.driverName(),
+                current.source(),
+                current.destination(),
+                current.riderLocation(),
+                current.riderLocation(),
+                0,
+                "COMPLETED"
+        );
+        TRIPS.put(request.tripId(), completed);
+
+        return ResponseEntity.ok(Map.of(
+                "tripId", request.tripId(),
+                "status", "COMPLETED",
+                "message", "Trip completed successfully",
+                "allowFeedback", true
+        ));
+    }
+
+    @PostMapping("/feedback")
+    public ResponseEntity<?> submitFeedback(@RequestBody FeedbackRequest request) {
+        if (request == null || isBlank(request.tripId()) || request.rating() < 1 || request.rating() > 5 || request.tipAmount() < 0) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("tripId, rating (1-5) and non-negative tipAmount are required");
+        }
+
+        TripTracking trip = TRIPS.get(request.tripId());
+        if (trip == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Trip not found");
+        }
+        if (!"COMPLETED".equalsIgnoreCase(trip.status())) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Trip must be completed before feedback");
+        }
+
+        return ResponseEntity.ok(Map.of(
+                "tripId", request.tripId(),
+                "message", "Thanks for the feedback",
+                "tipAmount", request.tipAmount(),
+                "rating", request.rating()
         ));
     }
 
@@ -306,7 +371,14 @@ public class RideEstimateController {
             String destination,
             Coordinates riderLocation,
             Coordinates driverLocation,
-            int etaMinutes
+            int etaMinutes,
+            String status
     ) {
+    }
+
+    public record CompleteTripRequest(String tripId, String tripPin) {
+    }
+
+    public record FeedbackRequest(String tripId, double tipAmount, int rating, String comment) {
     }
 }

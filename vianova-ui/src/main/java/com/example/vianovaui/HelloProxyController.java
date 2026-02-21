@@ -72,6 +72,16 @@ public class HelloProxyController {
         return forwardJson("/rides/finalize", payload);
     }
 
+    @PostMapping(value = "/api/rides/complete", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<String> completeTrip(@RequestBody String payload) {
+        return forwardJson("/rides/complete", payload);
+    }
+
+    @PostMapping(value = "/api/rides/feedback", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<String> rideFeedback(@RequestBody String payload) {
+        return forwardJson("/rides/feedback", payload);
+    }
+
     @GetMapping(value = "/api/rides/tracking", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<String> tracking(@RequestParam String tripId) {
         try {

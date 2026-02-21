@@ -135,6 +135,7 @@ class VianovaApplicationTests {
                         .content(payload))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.tripId").isString())
+                .andExpect(jsonPath("$.tripPin").isString())
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
@@ -143,7 +144,63 @@ class VianovaApplicationTests {
         mockMvc.perform(get("/rides/tracking").queryParam("tripId", tripId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.driverLocation.lat").isNumber())
-                .andExpect(jsonPath("$.riderLocation.lat").isNumber());
+                .andExpect(jsonPath("$.riderLocation.lat").isNumber())
+                .andExpect(jsonPath("$.status").value("DRIVER_EN_ROUTE"));
+    }
+
+    @Test
+    void completesTripAndAllowsFeedback() throws Exception {
+        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(new RideEstimateController()).build();
+        String finalizePayload = """
+                {
+                  "source":"Downtown",
+                  "destination":"Airport",
+                  "departureTime":"2026-02-21T18:30",
+                  "driverName":"Aarav S.",
+                  "finalFare":18.5,
+                  "paymentOption":"Card ****2291"
+                }
+                """;
+
+        String finalizeResponse = mockMvc.perform(post("/rides/finalize")
+                        .contentType(APPLICATION_JSON)
+                        .content(finalizePayload))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        String tripId = finalizeResponse.replaceAll(".*\"tripId\":\"([^\"]+)\".*", "$1");
+        String tripPin = finalizeResponse.replaceAll(".*\"tripPin\":\"([^\"]+)\".*", "$1");
+
+        String completePayload = """
+                {
+                  "tripId":"%s",
+                  "tripPin":"%s"
+                }
+                """.formatted(tripId, tripPin);
+
+        mockMvc.perform(post("/rides/complete")
+                        .contentType(APPLICATION_JSON)
+                        .content(completePayload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("COMPLETED"))
+                .andExpect(jsonPath("$.allowFeedback").value(true));
+
+        String feedbackPayload = """
+                {
+                  "tripId":"%s",
+                  "tipAmount":4.5,
+                  "rating":5,
+                  "comment":"Great ride"
+                }
+                """.formatted(tripId);
+
+        mockMvc.perform(post("/rides/feedback")
+                        .contentType(APPLICATION_JSON)
+                        .content(feedbackPayload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Thanks for the feedback"));
     }
 
     @Test
