@@ -1,5 +1,6 @@
 package com.example.vianovaui;
 
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -9,17 +10,13 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.multipart.MultipartFile;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.util.UUID;
 
 @RestController
 public class HelloProxyController {
@@ -148,6 +145,39 @@ public class HelloProxyController {
         return forwardJson("/riders/profile/payment", payload);
     }
 
+    @GetMapping(value = "/api/riders/cards", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<String> riderCards(@RequestParam String riderId) {
+        try {
+            String base = backendBaseUrl.endsWith("/")
+                    ? backendBaseUrl.substring(0, backendBaseUrl.length() - 1)
+                    : backendBaseUrl;
+            String encodedRiderId = URLEncoder.encode(riderId, StandardCharsets.UTF_8);
+            URI uri = URI.create(base + "/riders/cards?riderId=" + encodedRiderId);
+
+            HttpRequest request = HttpRequest.newBuilder(uri).GET().build();
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            return ResponseEntity.status(response.statusCode()).body(response.body());
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                    .body("{\"error\":\"Unable to reach vianova API: " + ex.getMessage().replace("\"", "'") + "\"}");
+        }
+    }
+
+    @PostMapping(value = "/api/riders/cards/save", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<String> saveRiderCard(@RequestBody String payload) {
+        return forwardJson("/riders/cards/save", payload);
+    }
+
+    @PostMapping(value = "/api/riders/cards/delete", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<String> deleteRiderCard(@RequestBody String payload) {
+        return forwardJson("/riders/cards/delete", payload);
+    }
+
+    @PostMapping(value = "/api/riders/onboard", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<String> onboardRider(@RequestBody String payload) {
+        return forwardJson("/riders/onboard", payload);
+    }
+
     @GetMapping(value = "/api/drivers/rides", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<String> driverRides(@RequestParam String driverId) {
         try {
@@ -225,6 +255,11 @@ public class HelloProxyController {
         return forwardJson("/drivers/cars", payload);
     }
 
+    @PostMapping(value = "/api/drivers/cars/delete", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<String> deleteDriverCar(@RequestBody String payload) {
+        return forwardJson("/drivers/cars/delete", payload);
+    }
+
     @PostMapping(value = "/api/drivers/profile/address", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<String> addDriverAddress(@RequestBody String payload) {
         return forwardJson("/drivers/profile/address", payload);
@@ -261,70 +296,25 @@ public class HelloProxyController {
     }
 
     @PostMapping(value = "/api/drivers/onboard", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<String> onboardDriver(
-            @RequestParam String name,
-            @RequestParam String age,
-            @RequestParam String sex,
-            @RequestParam String socialAddress,
-            @RequestParam String experience,
-            @RequestParam String drivingLicenseNumber,
-            @RequestParam MultipartFile licenseDocument
-    ) {
+    public ResponseEntity<String> onboardDriver(HttpServletRequest request) {
         try {
             String base = backendBaseUrl.endsWith("/")
                     ? backendBaseUrl.substring(0, backendBaseUrl.length() - 1)
                     : backendBaseUrl;
             URI uri = URI.create(base + "/drivers/onboard");
+            String contentType = request.getContentType();
+            byte[] payload = request.getInputStream().readAllBytes();
 
-            String boundary = "----VianovaBoundary" + UUID.randomUUID();
-            byte[] payload = buildMultipartPayload(boundary, name, age, sex, socialAddress, experience, drivingLicenseNumber, licenseDocument);
-
-            HttpRequest request = HttpRequest.newBuilder(uri)
-                    .header("Content-Type", "multipart/form-data; boundary=" + boundary)
+            HttpRequest requestObj = HttpRequest.newBuilder(uri)
+                    .header("Content-Type", contentType == null ? "multipart/form-data" : contentType)
                     .POST(HttpRequest.BodyPublishers.ofByteArray(payload))
                     .build();
 
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = httpClient.send(requestObj, HttpResponse.BodyHandlers.ofString());
             return ResponseEntity.status(response.statusCode()).body(response.body());
         } catch (Exception ex) {
             return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
                     .body("{\"error\":\"Unable to reach vianova API: " + ex.getMessage().replace("\"", "'") + "\"}");
         }
-    }
-
-    private byte[] buildMultipartPayload(
-            String boundary,
-            String name,
-            String age,
-            String sex,
-            String socialAddress,
-            String experience,
-            String drivingLicenseNumber,
-            MultipartFile licenseDocument
-    ) throws IOException {
-        ByteArrayOutputStream output = new ByteArrayOutputStream();
-
-        writeTextPart(output, boundary, "name", name);
-        writeTextPart(output, boundary, "age", age);
-        writeTextPart(output, boundary, "sex", sex);
-        writeTextPart(output, boundary, "socialAddress", socialAddress);
-        writeTextPart(output, boundary, "experience", experience);
-        writeTextPart(output, boundary, "drivingLicenseNumber", drivingLicenseNumber);
-
-        output.write(("--" + boundary + "\r\n").getBytes(StandardCharsets.UTF_8));
-        output.write(("Content-Disposition: form-data; name=\"licenseDocument\"; filename=\"" + licenseDocument.getOriginalFilename() + "\"\r\n").getBytes(StandardCharsets.UTF_8));
-        output.write(("Content-Type: " + (licenseDocument.getContentType() == null ? "application/octet-stream" : licenseDocument.getContentType()) + "\r\n\r\n").getBytes(StandardCharsets.UTF_8));
-        output.write(licenseDocument.getBytes());
-        output.write("\r\n".getBytes(StandardCharsets.UTF_8));
-
-        output.write(("--" + boundary + "--\r\n").getBytes(StandardCharsets.UTF_8));
-        return output.toByteArray();
-    }
-
-    private void writeTextPart(ByteArrayOutputStream output, String boundary, String fieldName, String fieldValue) throws IOException {
-        output.write(("--" + boundary + "\r\n").getBytes(StandardCharsets.UTF_8));
-        output.write(("Content-Disposition: form-data; name=\"" + fieldName + "\"\r\n\r\n").getBytes(StandardCharsets.UTF_8));
-        output.write((fieldValue == null ? "" : fieldValue).getBytes(StandardCharsets.UTF_8));
-        output.write("\r\n".getBytes(StandardCharsets.UTF_8));
     }
 }

@@ -12,27 +12,37 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/drivers")
 public class DriverDashboardController {
 
-    private static final Map<String, List<CarInfo>> DRIVER_CARS = new ConcurrentHashMap<>();
-    private static final Map<String, List<String>> DRIVER_ADDRESSES = new ConcurrentHashMap<>();
-    private static final Map<String, List<PaymentOption>> DRIVER_PAYMENTS = new ConcurrentHashMap<>();
+    private static final Map<String, List<String>> DRIVER_ADDRESSES = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final Map<String, List<PaymentOption>> DRIVER_PAYMENTS = new java.util.concurrent.ConcurrentHashMap<>();
+
+    private final DriverDashboardRepository driverDashboardRepository;
+
+    public DriverDashboardController(DriverDashboardRepository driverDashboardRepository) {
+        this.driverDashboardRepository = driverDashboardRepository;
+    }
 
     @GetMapping("/rides")
     public ResponseEntity<?> previousRides(@RequestParam String driverId) {
-        if (driverId == null || driverId.isBlank()) {
+        UUID driverUuid = parseDriverId(driverId);
+        if (driverUuid == null) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("driverId is required");
         }
 
-        List<Map<String, Object>> rides = List.of(
-                Map.of("rideId", "RIDE-1042", "source", "Downtown", "destination", "Airport", "fare", 26.40, "date", "2026-02-18"),
-                Map.of("rideId", "RIDE-1043", "source", "Main Street", "destination", "Tech Park", "fare", 14.90, "date", "2026-02-19"),
-                Map.of("rideId", "RIDE-1044", "source", "City Mall", "destination", "Central Station", "fare", 18.75, "date", "2026-02-20")
-        );
+        var rides = driverDashboardRepository.findPreviousRides(driverUuid).stream()
+                .map(ride -> Map.of(
+                        "rideId", ride.rideId(),
+                        "source", ride.source(),
+                        "destination", ride.destination(),
+                        "fare", ride.fare(),
+                        "date", ride.date()
+                ))
+                .toList();
         return ResponseEntity.ok(Map.of("driverId", driverId, "rides", rides));
     }
 
@@ -43,6 +53,19 @@ public class DriverDashboardController {
                     .body(Map.of("message", "driverId, phone, email and address are required"));
         }
 
+        UUID driverUuid = parseDriverId(request.driverId());
+        if (driverUuid == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("message", "driverId must be a valid UUID"));
+        }
+
+        driverDashboardRepository.upsertContact(
+                driverUuid,
+                request.phone().trim(),
+                request.email().trim().toLowerCase(),
+                request.address().trim()
+        );
+
         return ResponseEntity.ok(Map.of(
                 "message", "Contact information updated successfully",
                 "driverId", request.driverId()
@@ -51,19 +74,25 @@ public class DriverDashboardController {
 
     @GetMapping("/ratings")
     public ResponseEntity<?> getRatings(@RequestParam String driverId) {
-        if (isBlank(driverId)) {
+        UUID driverUuid = parseDriverId(driverId);
+        if (driverUuid == null) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", "driverId is required"));
         }
 
+        DriverDashboardRepository.RatingSummaryRow summary = driverDashboardRepository.findRatingSummary(driverUuid)
+                .orElse(new DriverDashboardRepository.RatingSummaryRow(java.math.BigDecimal.ZERO, 0));
+        var strengths = driverDashboardRepository.findRatingStrengths(driverUuid).stream()
+                .map(item -> Map.of(
+                        "name", item.name(),
+                        "score", item.score()
+                ))
+                .toList();
+
         return ResponseEntity.ok(Map.of(
                 "driverId", driverId,
-                "overallRating", 4.8,
-                "totalTripsRated", 246,
-                "strengths", List.of(
-                        Map.of("name", "Clean Car", "score", 4.9),
-                        Map.of("name", "Safe Driving", "score", 4.8),
-                        Map.of("name", "On-time Pickup and Dropoff", "score", 4.7)
-                )
+                "overallRating", summary.overallRating(),
+                "totalTripsRated", summary.totalTripsRated(),
+                "strengths", strengths
         ));
     }
 
@@ -130,11 +159,14 @@ public class DriverDashboardController {
 
     @GetMapping("/cars")
     public ResponseEntity<?> getCars(@RequestParam String driverId) {
-        if (isBlank(driverId)) {
+        UUID driverUuid = parseDriverId(driverId);
+        if (driverUuid == null) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", "driverId is required"));
         }
 
-        List<CarInfo> cars = getOrCreateCars(driverId);
+        List<CarInfo> cars = driverDashboardRepository.findCars(driverUuid).stream()
+                .map(car -> new CarInfo(car.carId(), car.model(), car.plateNumber(), car.color()))
+                .toList();
         return ResponseEntity.ok(Map.of(
                 "driverId", driverId,
                 "cars", cars
@@ -148,8 +180,17 @@ public class DriverDashboardController {
                     .body(Map.of("message", "driverId, model, plateNumber and color are required"));
         }
 
-        List<CarInfo> cars = getOrCreateCars(request.driverId());
-        boolean exists = cars.stream().anyMatch(car -> car.plateNumber().equalsIgnoreCase(request.plateNumber()));
+        UUID driverUuid = parseDriverId(request.driverId());
+        if (driverUuid == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("message", "driverId must be a valid UUID"));
+        }
+
+        String plateNumber = request.plateNumber().trim();
+        boolean exists = driverDashboardRepository.existsCar(driverUuid, plateNumber);
+        List<CarInfo> cars = driverDashboardRepository.findCars(driverUuid).stream()
+                .map(car -> new CarInfo(car.carId(), car.model(), car.plateNumber(), car.color()))
+                .toList();
         if (exists) {
             return ResponseEntity.ok(Map.of(
                     "message", "Car already exists",
@@ -158,7 +199,15 @@ public class DriverDashboardController {
             ));
         }
 
-        cars.add(new CarInfo(request.model(), request.plateNumber(), request.color()));
+        driverDashboardRepository.addCar(
+                driverUuid,
+                request.model().trim(),
+                plateNumber,
+                request.color().trim()
+        );
+        cars = driverDashboardRepository.findCars(driverUuid).stream()
+                .map(car -> new CarInfo(car.carId(), car.model(), car.plateNumber(), car.color()))
+                .toList();
         return ResponseEntity.ok(Map.of(
                 "message", "Car added successfully",
                 "driverId", request.driverId(),
@@ -166,12 +215,32 @@ public class DriverDashboardController {
         ));
     }
 
-    private List<CarInfo> getOrCreateCars(String driverId) {
-        return DRIVER_CARS.computeIfAbsent(driverId, id -> {
-            List<CarInfo> defaults = new ArrayList<>();
-            defaults.add(new CarInfo("Toyota Prius", "MOCK-1001", "White"));
-            return defaults;
-        });
+    @PostMapping("/cars/delete")
+    public ResponseEntity<?> deleteCar(@RequestBody DeleteCarRequest request) {
+        if (request == null || isBlank(request.driverId()) || request.carId() == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("message", "driverId and carId are required"));
+        }
+        UUID driverUuid = parseDriverId(request.driverId());
+        if (driverUuid == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("message", "driverId must be a valid UUID"));
+        }
+
+        int deleted = driverDashboardRepository.deleteCar(driverUuid, request.carId());
+        if (deleted == 0) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", "Car not found"));
+        }
+
+        List<CarInfo> cars = driverDashboardRepository.findCars(driverUuid).stream()
+                .map(car -> new CarInfo(car.carId(), car.model(), car.plateNumber(), car.color()))
+                .toList();
+        return ResponseEntity.ok(Map.of(
+                "message", "Car deleted successfully",
+                "driverId", request.driverId(),
+                "cars", cars
+        ));
     }
 
     private List<String> getOrCreateAddresses(String driverId) {
@@ -194,13 +263,27 @@ public class DriverDashboardController {
         return value == null || value.isBlank();
     }
 
+    private UUID parseDriverId(String driverId) {
+        if (isBlank(driverId)) {
+            return null;
+        }
+        try {
+            return UUID.fromString(driverId.trim());
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
+    }
+
     public record ContactUpdateRequest(String driverId, String phone, String email, String address) {
     }
 
     public record AddCarRequest(String driverId, String model, String plateNumber, String color) {
     }
 
-    public record CarInfo(String model, String plateNumber, String color) {
+    public record CarInfo(Long carId, String model, String plateNumber, String color) {
+    }
+
+    public record DeleteCarRequest(String driverId, Long carId) {
     }
 
     public record AddAddressRequest(String driverId, String address) {

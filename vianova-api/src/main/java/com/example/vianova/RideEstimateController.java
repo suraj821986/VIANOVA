@@ -7,7 +7,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
 import java.util.List;
@@ -22,6 +24,13 @@ public class RideEstimateController {
 
     private static final Map<String, TripTracking> TRIPS = new ConcurrentHashMap<>();
     private static final Map<String, String> TRIP_PINS = new ConcurrentHashMap<>();
+    private static final Map<String, TripMeta> TRIP_META = new ConcurrentHashMap<>();
+
+    private final RideFlowRepository rideFlowRepository;
+
+    public RideEstimateController(RideFlowRepository rideFlowRepository) {
+        this.rideFlowRepository = rideFlowRepository;
+    }
 
     @PostMapping("/estimate")
     public ResponseEntity<?> estimateRide(@RequestBody RideEstimateRequest request) {
@@ -44,11 +53,16 @@ public class RideEstimateController {
         double surgeMultiplier = isPeakHour(departure.toLocalTime()) ? 1.35 : 1.0;
         double estimatedFare = round2((3.2 + (routeScore * 1.45)) * surgeMultiplier);
 
-        List<AvailableDriver> drivers = List.of(
-                new AvailableDriver("Aarav S.", "Toyota Prius", Math.max(2, etaMinutes - 6), 4.9),
-                new AvailableDriver("Neha R.", "Hyundai Ioniq", Math.max(3, etaMinutes - 4), 4.8),
-                new AvailableDriver("Vikram P.", "Honda City", Math.max(4, etaMinutes - 2), 4.7)
-        );
+        List<AvailableDriver> drivers = rideFlowRepository.findAvailableDrivers().stream()
+                .limit(8)
+                .map(driver -> new AvailableDriver(
+                        driver.driverId().toString(),
+                        driver.name(),
+                        driver.vehicle(),
+                        Math.max(2, etaMinutes - 2),
+                        driver.rating().doubleValue()
+                ))
+                .toList();
 
         RideEstimateResponse response = new RideEstimateResponse(
                 request.source(),
@@ -121,9 +135,9 @@ public class RideEstimateController {
     @PostMapping("/negotiate")
     public ResponseEntity<?> negotiateFare(@RequestBody NegotiateFareRequest request) {
         if (request == null || isBlank(request.source()) || isBlank(request.destination()) || isBlank(request.departureTime())
-                || isBlank(request.driverName()) || request.proposedFare() <= 0) {
+                || request.proposedFare() <= 0 || (isBlank(request.driverId()) && isBlank(request.driverName()))) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body("source, destination, departureTime, driverName and proposedFare are required");
+                    .body("source, destination, departureTime, driverId/driverName and proposedFare are required");
         }
 
         ResponseEntity<?> validation = validateRequest(new RideEstimateRequest(request.source(), request.destination(), request.departureTime()));
@@ -161,9 +175,15 @@ public class RideEstimateController {
 
     @PostMapping("/tracking-preview")
     public ResponseEntity<?> trackingPreview(@RequestBody TrackingPreviewRequest request) {
-        if (request == null || isBlank(request.source()) || isBlank(request.destination()) || isBlank(request.driverName())) {
+        if (request == null || isBlank(request.source()) || isBlank(request.destination())
+                || (isBlank(request.driverId()) && isBlank(request.driverName()))) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body("source, destination and driverName are required");
+                    .body("source, destination and driverId/driverName are required");
+        }
+
+        DriverRef driverRef = resolveDriver(request.driverId(), request.driverName());
+        if (driverRef == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Selected driver was not found");
         }
 
         Coordinates rider = new Coordinates(37.7749, -122.4194);
@@ -171,7 +191,7 @@ public class RideEstimateController {
         return ResponseEntity.ok(Map.of(
                 "source", request.source(),
                 "destination", request.destination(),
-                "driverName", request.driverName(),
+                "driverName", driverRef.name(),
                 "riderLocation", rider,
                 "driverLocation", driver
         ));
@@ -180,21 +200,27 @@ public class RideEstimateController {
     @PostMapping("/finalize")
     public ResponseEntity<?> finalizeTrip(@RequestBody FinalizeTripRequest request) {
         if (request == null || isBlank(request.source()) || isBlank(request.destination()) || isBlank(request.departureTime())
-                || isBlank(request.driverName()) || isBlank(request.paymentOption()) || request.finalFare() <= 0) {
+                || (isBlank(request.driverId()) && isBlank(request.driverName()))
+                || isBlank(request.paymentOption()) || request.finalFare() <= 0) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body("source, destination, departureTime, driverName, paymentOption and finalFare are required");
+                    .body("source, destination, departureTime, driverId/driverName, paymentOption and finalFare are required");
         }
 
         ResponseEntity<?> validation = validateRequest(new RideEstimateRequest(request.source(), request.destination(), request.departureTime()));
         if (validation != null) {
             return validation;
         }
+        DriverRef driverRef = resolveDriver(request.driverId(), request.driverName());
+        if (driverRef == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Selected driver was not found");
+        }
+        LocalDate rideDate = LocalDateTime.parse(request.departureTime()).toLocalDate();
 
         String tripId = "TRIP-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
         String tripPin = String.format("%04d", new Random().nextInt(10000));
         TripTracking tracking = new TripTracking(
                 tripId,
-                request.driverName(),
+                driverRef.name(),
                 request.source(),
                 request.destination(),
                 new Coordinates(37.7749, -122.4194),
@@ -204,10 +230,12 @@ public class RideEstimateController {
         );
         TRIPS.put(tripId, tracking);
         TRIP_PINS.put(tripId, tripPin);
+        TRIP_META.put(tripId, new TripMeta(driverRef.driverId(), request.finalFare(), rideDate));
 
         return ResponseEntity.ok(Map.of(
                 "tripId", tripId,
                 "tripPin", tripPin,
+                "driverId", driverRef.driverId(),
                 "message", "Trip finalized successfully",
                 "status", "DRIVER_EN_ROUTE"
         ));
@@ -221,8 +249,12 @@ public class RideEstimateController {
         }
 
         TripTracking current = TRIPS.get(request.tripId());
+        TripMeta tripMeta = TRIP_META.get(request.tripId());
         if (current == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Trip not found");
+        }
+        if (tripMeta == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Trip metadata not found");
         }
         String storedPin = TRIP_PINS.get(request.tripId());
         if (storedPin == null || !storedPin.equals(request.tripPin())) {
@@ -240,6 +272,14 @@ public class RideEstimateController {
                 "COMPLETED"
         );
         TRIPS.put(request.tripId(), completed);
+        rideFlowRepository.upsertCompletedRide(
+                request.tripId(),
+                tripMeta.driverId(),
+                current.source(),
+                current.destination(),
+                tripMeta.finalFare(),
+                tripMeta.rideDate()
+        );
 
         return ResponseEntity.ok(Map.of(
                 "tripId", request.tripId(),
@@ -263,6 +303,25 @@ public class RideEstimateController {
         if (!"COMPLETED".equalsIgnoreCase(trip.status())) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Trip must be completed before feedback");
         }
+        TripMeta tripMeta = TRIP_META.get(request.tripId());
+        if (tripMeta == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Trip metadata not found");
+        }
+
+        rideFlowRepository.upsertTripFeedback(
+                request.tripId(),
+                tripMeta.driverId(),
+                request.rating(),
+                request.tipAmount(),
+                request.comment()
+        );
+
+        RideFlowRepository.RatingAggregate aggregate = rideFlowRepository.aggregateRatings(tripMeta.driverId());
+        BigDecimal avgRating = clampRating(aggregate.averageRating());
+        rideFlowRepository.upsertRatingSummary(tripMeta.driverId(), avgRating, aggregate.totalTripsRated());
+        rideFlowRepository.upsertRatingStrength(tripMeta.driverId(), "Clean Car", clampRating(avgRating.add(BigDecimal.valueOf(0.10))));
+        rideFlowRepository.upsertRatingStrength(tripMeta.driverId(), "Safe Driving", avgRating);
+        rideFlowRepository.upsertRatingStrength(tripMeta.driverId(), "On-time Pickup and Dropoff", clampRating(avgRating.subtract(BigDecimal.valueOf(0.10))));
 
         return ResponseEntity.ok(Map.of(
                 "tripId", request.tripId(),
@@ -313,6 +372,39 @@ public class RideEstimateController {
         return value == null || value.isBlank();
     }
 
+    private DriverRef resolveDriver(String driverId, String driverName) {
+        if (!isBlank(driverId)) {
+            try {
+                UUID driverUuid = UUID.fromString(driverId.trim());
+                return rideFlowRepository.findDriverById(driverUuid)
+                        .map(driver -> new DriverRef(driver.driverId(), driver.name()))
+                        .orElse(null);
+            } catch (IllegalArgumentException ignored) {
+                return null;
+            }
+        }
+        if (isBlank(driverName)) {
+            return null;
+        }
+        return rideFlowRepository.findDriverByName(driverName.trim())
+                .map(driver -> new DriverRef(driver.driverId(), driver.name()))
+                .orElse(null);
+    }
+
+    private BigDecimal clampRating(BigDecimal rating) {
+        if (rating == null) {
+            return BigDecimal.ZERO;
+        }
+        BigDecimal rounded = rating.setScale(2, java.math.RoundingMode.HALF_UP);
+        if (rounded.compareTo(BigDecimal.ONE) < 0) {
+            return BigDecimal.ONE;
+        }
+        if (rounded.compareTo(BigDecimal.valueOf(5)) > 0) {
+            return BigDecimal.valueOf(5);
+        }
+        return rounded;
+    }
+
     public record RideEstimateRequest(String source, String destination, String departureTime) {
     }
 
@@ -328,6 +420,7 @@ public class RideEstimateController {
     }
 
     public record AvailableDriver(
+            String driverId,
             String name,
             String vehicle,
             int etaMinutes,
@@ -339,6 +432,7 @@ public class RideEstimateController {
             String source,
             String destination,
             String departureTime,
+            String driverId,
             String driverName,
             double proposedFare
     ) {
@@ -347,6 +441,7 @@ public class RideEstimateController {
     public record TrackingPreviewRequest(
             String source,
             String destination,
+            String driverId,
             String driverName
     ) {
     }
@@ -355,6 +450,7 @@ public class RideEstimateController {
             String source,
             String destination,
             String departureTime,
+            String driverId,
             String driverName,
             double finalFare,
             String paymentOption
@@ -380,5 +476,11 @@ public class RideEstimateController {
     }
 
     public record FeedbackRequest(String tripId, double tipAmount, int rating, String comment) {
+    }
+
+    private record DriverRef(UUID driverId, String name) {
+    }
+
+    private record TripMeta(UUID driverId, double finalFare, LocalDate rideDate) {
     }
 }

@@ -33,6 +33,21 @@
                     <button class="primary" type="submit">Login</button>
                 </form>
                 <div id="riderLoginMessage" class="auth-message">Please login to request rides.</div>
+                <button id="showRiderOnboardingBtn" class="link-button" type="button">New user? Start onboarding</button>
+            </div>
+
+            <div id="riderOnboardingWrap" class="hidden">
+                <h3>Rider Onboarding</h3>
+                <form id="riderOnboardingForm" class="driver-form">
+                    <input id="riderFirstName" placeholder="First name" required>
+                    <input id="riderLastName" placeholder="Last name" required>
+                    <input id="riderOnboardingEmail" class="driver-full" type="email" placeholder="Email" required>
+                    <input id="riderPhoneNumber" class="driver-full" placeholder="Phone number" required>
+                    <input id="riderOnboardingPassword" class="driver-full" type="password" minlength="8" placeholder="Password" required>
+                    <input id="riderConfirmPassword" class="driver-full" type="password" minlength="8" placeholder="Confirm password" required>
+                    <button class="primary driver-full" type="submit">Submit Rider Details</button>
+                </form>
+                <div id="riderOnboardingMessage" class="driver-message">Fill rider details to create account.</div>
             </div>
 
             <div id="riderActions" class="section-actions hidden">
@@ -51,9 +66,19 @@
                 <h4>Payment Options</h4>
                 <div id="riderPaymentList" class="list-grid"></div>
                 <form id="riderPaymentForm" class="profile-form payment-form">
-                    <input id="riderPaymentType" placeholder="Type (Card/UPI/Cash)" required>
-                    <input id="riderPaymentDetails" placeholder="Details (e.g. ****4432 or rider@upi)" required>
+                    <input id="riderPaymentType" placeholder="Type (Card/Cash)" required>
+                    <input id="riderPaymentDetails" placeholder="Details (e.g. ****4432 or Cash)" required>
                     <button class="secondary" type="submit">Add Payment</button>
+                </form>
+
+                <h4>Saved Credit Cards</h4>
+                <div id="riderSavedCardsList" class="list-grid"></div>
+                <form id="riderCardForm" class="profile-form payment-form">
+                    <input id="riderCardHolderName" placeholder="Card holder name" required>
+                    <input id="riderCardNumber" placeholder="Card number" inputmode="numeric" required>
+                    <input id="riderCardExpiryMonth" type="number" min="1" max="12" placeholder="MM" required>
+                    <input id="riderCardExpiryYear" type="number" min="2026" max="2099" placeholder="YYYY" required>
+                    <button class="secondary" type="submit">Save Card</button>
                 </form>
                 <div id="riderProfileMessage" class="profile-message">Manage rider addresses and payment options here.</div>
             </div>
@@ -71,7 +96,7 @@
                 <input class="departure-time" id="departureTime" type="datetime-local" required>
                 <button class="primary" type="submit">Get Estimate</button>
             </form>
-            <p id="riderHint" class="hint hidden">Backend is mocked for demo output.</p>
+            <p id="riderHint" class="hint hidden"></p>
             <div id="estimate" class="hidden">Fill source, destination and time, then click Get Estimate.</div>
             <div id="drivers"></div>
             <div id="negotiationBlock" class="chat-block hidden">
@@ -93,8 +118,18 @@
             <div id="tripCheckout" class="checkout-page hidden">
                 <h4>Finalize Trip</h4>
                 <div id="tripCheckoutSummary"></div>
+                <h4>Save Card For Future Use</h4>
+                <form id="tripSaveCardForm" class="checkout-form">
+                    <input id="tripCardHolderName" placeholder="Card holder name" required>
+                    <input id="tripCardNumber" placeholder="Card number" inputmode="numeric" required>
+                    <input id="tripCardExpiryMonth" type="number" min="1" max="12" placeholder="MM" required>
+                    <input id="tripCardExpiryYear" type="number" min="2026" max="2099" placeholder="YYYY" required>
+                    <button class="secondary" type="submit">Save Card</button>
+                </form>
                 <form id="tripCheckoutForm" class="checkout-form">
-                    <input id="tripPaymentOption" placeholder="Payment option (Card ****2291 / UPI / Cash)" required>
+                    <select id="tripPaymentOption" required>
+                        <option value="">Select payment option</option>
+                    </select>
                     <button class="primary" type="submit">Finalize Trip</button>
                 </form>
                 <div id="tripCheckoutMessage" class="hint"></div>
@@ -119,7 +154,7 @@
             <div id="driverAuthCard" class="auth-card">
                 <h3 class="auth-title">Driver Login</h3>
                 <form id="driverLoginForm" class="auth-form">
-                    <input id="driverLoginId" placeholder="Email or Phone" required>
+                    <input id="driverLoginId" type="email" placeholder="Email" required>
                     <input id="driverLoginPassword" type="password" placeholder="Password" required>
                     <button class="primary" type="submit">Login</button>
                 </form>
@@ -170,6 +205,10 @@
                     <input id="driverAge" type="number" min="18" placeholder="Age" required>
                     <input id="driverSex" placeholder="Sex" required>
                     <input id="driverExperience" type="number" min="0" placeholder="Experience in years" required>
+                    <input id="driverEmail" class="driver-full" type="email" placeholder="Email" required>
+                    <input id="driverPhoneNumber" class="driver-full" placeholder="Phone number" required>
+                    <input id="driverPassword" class="driver-full" type="password" minlength="8" placeholder="Password" required>
+                    <input id="driverConfirmPassword" class="driver-full" type="password" minlength="8" placeholder="Confirm password" required>
                     <input id="driverSocialAddress" class="driver-full" placeholder="Social address" required>
                     <input id="driverLicenseNumber" class="driver-full" placeholder="Driving license number" required>
                     <input id="driverLicenseDocument" class="driver-full" type="file" accept=".pdf,.png,.jpg,.jpeg" required>
@@ -200,6 +239,10 @@
 
     const riderLoginForm = document.getElementById("riderLoginForm");
     const riderAuthCard = document.getElementById("riderAuthCard");
+    const showRiderOnboardingBtn = document.getElementById("showRiderOnboardingBtn");
+    const riderOnboardingWrap = document.getElementById("riderOnboardingWrap");
+    const riderOnboardingForm = document.getElementById("riderOnboardingForm");
+    const riderOnboardingMessage = document.getElementById("riderOnboardingMessage");
     const riderActions = document.getElementById("riderActions");
     const riderProfileBtn = document.getElementById("riderProfileBtn");
     const riderProfilePanel = document.getElementById("riderProfilePanel");
@@ -207,6 +250,8 @@
     const riderAddressForm = document.getElementById("riderAddressForm");
     const riderPaymentList = document.getElementById("riderPaymentList");
     const riderPaymentForm = document.getElementById("riderPaymentForm");
+    const riderSavedCardsList = document.getElementById("riderSavedCardsList");
+    const riderCardForm = document.getElementById("riderCardForm");
     const riderProfileMessage = document.getElementById("riderProfileMessage");
     const riderLogoutBtn = document.getElementById("riderLogoutBtn");
     const riderLoginMessage = document.getElementById("riderLoginMessage");
@@ -226,6 +271,7 @@
     const acceptFinalBtn = document.getElementById("acceptFinalBtn");
     const tripCheckout = document.getElementById("tripCheckout");
     const tripCheckoutSummary = document.getElementById("tripCheckoutSummary");
+    const tripSaveCardForm = document.getElementById("tripSaveCardForm");
     const tripCheckoutForm = document.getElementById("tripCheckoutForm");
     const tripPaymentOption = document.getElementById("tripPaymentOption");
     const tripCheckoutMessage = document.getElementById("tripCheckoutMessage");
@@ -246,6 +292,7 @@
     let currentRiderId = "";
     let currentRideRequest = null;
     let selectedNegotiationDriver = null;
+    let selectedNegotiationDriverId = null;
     let negotiatedFare = null;
     let finalizedTripId = null;
     let finalizedTripPin = null;
@@ -274,9 +321,11 @@
                 return;
             }
             const result = JSON.parse(body);
-            currentRiderId = payload.emailOrId;
+            currentRiderId = result.riderId || payload.emailOrId;
             riderLoginMessage.textContent = result.message || "Rider login successful.";
             riderAuthCard.classList.add("hidden");
+            riderOnboardingWrap.classList.add("hidden");
+            showRiderOnboardingBtn.textContent = "New user? Start onboarding";
             riderActions.classList.remove("hidden");
             riderProfileBtn.classList.remove("hidden");
             riderLogoutBtn.classList.remove("hidden");
@@ -308,6 +357,68 @@
                 ${payment.details}
             </article>
         `).join("");
+        await loadRiderSavedCards();
+    }
+
+    async function loadRiderSavedCards() {
+        if (!currentRiderId) {
+            riderSavedCardsList.innerHTML = "";
+            return;
+        }
+        const response = await fetch(`/api/riders/cards?riderId=${encodeURIComponent(currentRiderId)}`);
+        const body = await response.text();
+        if (!response.ok) {
+            riderSavedCardsList.innerHTML = `<article class="list-item">Unable to load cards: ${body}</article>`;
+            return;
+        }
+        const data = JSON.parse(body);
+        const cards = data.savedCards || [];
+        riderSavedCardsList.innerHTML = cards.length
+            ? cards.map((card) => `
+                <article class="list-item">
+                    <strong>${card.cardHolderName}</strong><br>
+                    Card ****${card.last4}<br>
+                    Expires ${String(card.expiryMonth).padStart(2, "0")}/${card.expiryYear}<br>
+                    <button class="secondary rider-card-delete-btn" data-card-id="${card.cardId}" style="margin-top:8px;">Delete</button>
+                </article>
+            `).join("")
+            : `<article class="list-item">No saved cards yet.</article>`;
+        populateTripPaymentOptions(cards);
+        document.querySelectorAll(".rider-card-delete-btn").forEach((btn) => {
+            btn.addEventListener("click", async () => {
+                if (!currentRiderId) {
+                    return;
+                }
+                const cardId = btn.getAttribute("data-card-id");
+                riderProfileMessage.textContent = "Deleting card...";
+                try {
+                    const response = await fetch("/api/riders/cards/delete", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ riderId: currentRiderId, cardId })
+                    });
+                    const bodyText = await response.text();
+                    if (!response.ok) {
+                        riderProfileMessage.textContent = `Delete card failed: ${bodyText}`;
+                        return;
+                    }
+                    const result = JSON.parse(bodyText);
+                    riderProfileMessage.textContent = result.message || "Card deleted successfully";
+                    await loadRiderSavedCards();
+                } catch (error) {
+                    riderProfileMessage.textContent = `Delete card request failed: ${error}`;
+                }
+            });
+        });
+    }
+
+    function populateTripPaymentOptions(cards) {
+        const options = ['<option value="">Select payment option</option>'];
+        cards.forEach((card) => {
+            options.push(`<option value="CARD-****${card.last4}">Card ****${card.last4} (${String(card.expiryMonth).padStart(2, "0")}/${card.expiryYear})</option>`);
+        });
+        options.push('<option value="Cash">Cash</option>');
+        tripPaymentOption.innerHTML = options.join("");
     }
 
     riderProfileBtn.addEventListener("click", async () => {
@@ -333,14 +444,21 @@
         currentRiderId = "";
         riderAuthCard.classList.remove("hidden");
         riderActions.classList.add("hidden");
+        riderOnboardingWrap.classList.add("hidden");
+        riderOnboardingForm.reset();
+        riderOnboardingMessage.textContent = "Fill rider details to create account.";
+        showRiderOnboardingBtn.textContent = "New user? Start onboarding";
         riderProfileBtn.classList.add("hidden");
         riderLogoutBtn.classList.add("hidden");
         riderProfilePanel.classList.add("hidden");
         riderProfileBtn.textContent = "My Profile";
         riderAddressList.innerHTML = "";
         riderPaymentList.innerHTML = "";
+        riderSavedCardsList.innerHTML = "";
         riderAddressForm.reset();
         riderPaymentForm.reset();
+        riderCardForm.reset();
+        tripSaveCardForm.reset();
         riderForm.classList.add("hidden");
         riderHint.classList.add("hidden");
         estimate.classList.add("hidden");
@@ -351,6 +469,7 @@
         negotiationFare.value = "";
         currentRideRequest = null;
         selectedNegotiationDriver = null;
+        selectedNegotiationDriverId = null;
         negotiatedFare = null;
         riderOptions.innerHTML = "";
         resetTripCheckout();
@@ -358,6 +477,44 @@
         drivers.innerHTML = "";
         riderLoginMessage.textContent = "Please login to request rides.";
         riderProfileMessage.textContent = "Manage rider addresses and payment options here.";
+    });
+
+    showRiderOnboardingBtn.addEventListener("click", () => {
+        riderOnboardingWrap.classList.toggle("hidden");
+        showRiderOnboardingBtn.textContent = riderOnboardingWrap.classList.contains("hidden")
+            ? "New user? Start onboarding"
+            : "Hide onboarding";
+    });
+
+    riderOnboardingForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        const payload = {
+            firstName: document.getElementById("riderFirstName").value.trim(),
+            lastName: document.getElementById("riderLastName").value.trim(),
+            email: document.getElementById("riderOnboardingEmail").value.trim(),
+            phoneNumber: document.getElementById("riderPhoneNumber").value.trim(),
+            password: document.getElementById("riderOnboardingPassword").value,
+            confirmPassword: document.getElementById("riderConfirmPassword").value
+        };
+
+        riderOnboardingMessage.textContent = "Submitting rider onboarding details...";
+        try {
+            const response = await fetch("/api/riders/onboard", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+            const body = await response.text();
+            if (!response.ok) {
+                riderOnboardingMessage.textContent = `Error ${response.status}: ${body}`;
+                return;
+            }
+            const result = JSON.parse(body);
+            riderOnboardingMessage.textContent = result.status || "Rider onboarding completed";
+        } catch (error) {
+            riderOnboardingMessage.textContent = `Request failed: ${error}`;
+        }
     });
 
     function hideSuggestions(listEl) {
@@ -526,6 +683,7 @@
         negotiationMessages.innerHTML = "";
         negotiationFare.value = "";
         selectedNegotiationDriver = null;
+        selectedNegotiationDriverId = null;
         negotiatedFare = null;
         currentRideRequest = payload;
         resetTripCheckout();
@@ -557,13 +715,14 @@
                     <div>${driver.vehicle}</div>
                     <div>Arrives in ${driver.etaMinutes} mins</div>
                     <div>Rating ${driver.rating}</div>
-                    <button class="secondary negotiate-btn" data-driver="${driver.name}" style="margin-top:8px;">Negotiate Fare</button>
+                    <button class="secondary negotiate-btn" data-driver-id="${driver.driverId}" data-driver="${driver.name}" style="margin-top:8px;">Negotiate Fare</button>
                 </article>
             `).join("");
 
             document.querySelectorAll(".negotiate-btn").forEach((btn) => {
                 btn.addEventListener("click", () => {
                     selectedNegotiationDriver = btn.getAttribute("data-driver");
+                    selectedNegotiationDriverId = btn.getAttribute("data-driver-id");
                     negotiatedFare = null;
                     negotiationTitle.textContent = `Negotiate Fare with ${selectedNegotiationDriver}`;
                     negotiationMessages.innerHTML = `<div class="chat-msg"><strong>System:</strong> Start by sending your offer to ${selectedNegotiationDriver}.</div>`;
@@ -603,7 +762,7 @@
 
     negotiationForm.addEventListener("submit", async (event) => {
         event.preventDefault();
-        if (!currentRideRequest || !selectedNegotiationDriver) {
+        if (!currentRideRequest || !selectedNegotiationDriver || !selectedNegotiationDriverId) {
             negotiationMessages.innerHTML = `<div class="chat-msg"><strong>System:</strong> Pick a driver from estimate cards first.</div>`;
             return;
         }
@@ -620,6 +779,7 @@
             source: currentRideRequest.source,
             destination: currentRideRequest.destination,
             departureTime: currentRideRequest.departureTime,
+            driverId: selectedNegotiationDriverId,
             driverName: selectedNegotiationDriver,
             proposedFare: proposedFare
         };
@@ -658,7 +818,7 @@
     });
 
     acceptFinalBtn.addEventListener("click", async () => {
-        if (!currentRideRequest || !selectedNegotiationDriver || !negotiatedFare) {
+        if (!currentRideRequest || !selectedNegotiationDriver || !selectedNegotiationDriverId || !negotiatedFare) {
             return;
         }
         riderOptionsBlock.classList.add("hidden");
@@ -673,17 +833,8 @@
         tripCheckout.classList.remove("hidden");
         tripCheckoutSummary.textContent = `Driver: ${selectedNegotiationDriver} | Final Fare: USD ${negotiatedFare.toFixed(2)}`;
         tripCheckoutMessage.textContent = "Choose payment option and finalize trip.";
-
         try {
-            const profileResp = await fetch(`/api/riders/profile?riderId=${encodeURIComponent(currentRiderId)}`);
-            if (profileResp.ok) {
-                const profileBody = await profileResp.text();
-                const profileData = JSON.parse(profileBody);
-                const firstPayment = (profileData.paymentOptions || [])[0];
-                if (firstPayment) {
-                    tripPaymentOption.value = `${firstPayment.type} ${firstPayment.details}`;
-                }
-            }
+            await loadRiderSavedCards();
         } catch (_) {
         }
 
@@ -694,6 +845,7 @@
                 body: JSON.stringify({
                     source: currentRideRequest.source,
                     destination: currentRideRequest.destination,
+                    driverId: selectedNegotiationDriverId,
                     driverName: selectedNegotiationDriver
                 })
             });
@@ -711,7 +863,7 @@
 
     tripCheckoutForm.addEventListener("submit", async (event) => {
         event.preventDefault();
-        if (!currentRideRequest || !selectedNegotiationDriver || !negotiatedFare) {
+        if (!currentRideRequest || !selectedNegotiationDriver || !selectedNegotiationDriverId || !negotiatedFare) {
             return;
         }
 
@@ -719,10 +871,15 @@
             source: currentRideRequest.source,
             destination: currentRideRequest.destination,
             departureTime: currentRideRequest.departureTime,
+            driverId: selectedNegotiationDriverId,
             driverName: selectedNegotiationDriver,
             finalFare: negotiatedFare,
             paymentOption: tripPaymentOption.value.trim()
         };
+        if (!payload.paymentOption) {
+            tripCheckoutMessage.textContent = "Please select a payment option.";
+            return;
+        }
         tripCheckoutMessage.textContent = "Finalizing trip...";
 
         try {
@@ -896,6 +1053,76 @@
         }
     });
 
+    riderCardForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        if (!currentRiderId) {
+            riderProfileMessage.textContent = "Please login as rider first.";
+            return;
+        }
+
+        const payload = {
+            riderId: currentRiderId,
+            cardHolderName: document.getElementById("riderCardHolderName").value.trim(),
+            cardNumber: document.getElementById("riderCardNumber").value.trim(),
+            expiryMonth: Number(document.getElementById("riderCardExpiryMonth").value),
+            expiryYear: Number(document.getElementById("riderCardExpiryYear").value)
+        };
+        riderProfileMessage.textContent = "Saving card...";
+        try {
+            const response = await fetch("/api/riders/cards/save", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+            const body = await response.text();
+            if (!response.ok) {
+                riderProfileMessage.textContent = `Save card failed: ${body}`;
+                return;
+            }
+            const result = JSON.parse(body);
+            riderProfileMessage.textContent = result.message || "Card saved successfully";
+            riderCardForm.reset();
+            await loadRiderSavedCards();
+        } catch (error) {
+            riderProfileMessage.textContent = `Save card request failed: ${error}`;
+        }
+    });
+
+    tripSaveCardForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        if (!currentRiderId) {
+            tripCheckoutMessage.textContent = "Please login as rider first.";
+            return;
+        }
+
+        const payload = {
+            riderId: currentRiderId,
+            cardHolderName: document.getElementById("tripCardHolderName").value.trim(),
+            cardNumber: document.getElementById("tripCardNumber").value.trim(),
+            expiryMonth: Number(document.getElementById("tripCardExpiryMonth").value),
+            expiryYear: Number(document.getElementById("tripCardExpiryYear").value)
+        };
+        tripCheckoutMessage.textContent = "Saving card...";
+        try {
+            const response = await fetch("/api/riders/cards/save", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+            const body = await response.text();
+            if (!response.ok) {
+                tripCheckoutMessage.textContent = `Save card failed: ${body}`;
+                return;
+            }
+            const result = JSON.parse(body);
+            tripCheckoutMessage.textContent = result.message || "Card saved successfully";
+            tripSaveCardForm.reset();
+            await loadRiderSavedCards();
+        } catch (error) {
+            tripCheckoutMessage.textContent = `Save card request failed: ${error}`;
+        }
+    });
+
     const dtInput = document.getElementById("departureTime");
     const now = new Date(Date.now() + 15 * 60000);
     dtInput.value = now.toISOString().slice(0, 16);
@@ -925,7 +1152,6 @@
             emailOrId: document.getElementById("driverLoginId").value.trim(),
             password: document.getElementById("driverLoginPassword").value
         };
-        currentDriverId = payload.emailOrId;
         driverLoginMessage.textContent = "Logging in...";
         try {
             const response = await fetch("/api/auth/driver/login", {
@@ -939,6 +1165,7 @@
                 return;
             }
             const result = JSON.parse(body);
+            currentDriverId = result.driverId || payload.emailOrId;
             driverLoginMessage.textContent = result.message || "Driver login successful.";
             const onboardingRequired = !!result.onboardingRequired;
             driverOnboardingWrap.classList.toggle("hidden", !onboardingRequired);
@@ -1030,9 +1257,39 @@
             <article class="car-item">
                 <strong>${car.model}</strong><br>
                 Plate: ${car.plateNumber}<br>
-                Color: ${car.color}
+                Color: ${car.color}<br>
+                <button class="secondary driver-car-delete-btn" data-car-id="${car.carId}" style="margin-top:8px;">Delete</button>
             </article>
         `).join("");
+        document.querySelectorAll(".driver-car-delete-btn").forEach((btn) => {
+            btn.addEventListener("click", async () => {
+                if (!currentDriverId) {
+                    return;
+                }
+                const carId = Number(btn.getAttribute("data-car-id"));
+                if (!carId) {
+                    return;
+                }
+                driverCarMessage.textContent = "Deleting car...";
+                try {
+                    const response = await fetch("/api/drivers/cars/delete", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ driverId: currentDriverId, carId })
+                    });
+                    const bodyText = await response.text();
+                    if (!response.ok) {
+                        driverCarMessage.textContent = `Delete car failed: ${bodyText}`;
+                        return;
+                    }
+                    const result = JSON.parse(bodyText);
+                    driverCarMessage.textContent = result.message || "Car deleted successfully";
+                    await loadDriverCars();
+                } catch (error) {
+                    driverCarMessage.textContent = `Delete car request failed: ${error}`;
+                }
+            });
+        });
     }
 
     showOnboardingBtn.addEventListener("click", () => {
@@ -1057,6 +1314,10 @@
         data.append("sex", document.getElementById("driverSex").value.trim());
         data.append("socialAddress", document.getElementById("driverSocialAddress").value.trim());
         data.append("experience", document.getElementById("driverExperience").value.trim());
+        data.append("email", document.getElementById("driverEmail").value.trim());
+        data.append("phoneNumber", document.getElementById("driverPhoneNumber").value.trim());
+        data.append("password", document.getElementById("driverPassword").value);
+        data.append("confirmPassword", document.getElementById("driverConfirmPassword").value);
         data.append("drivingLicenseNumber", document.getElementById("driverLicenseNumber").value.trim());
         data.append("licenseDocument", documentInput.files[0]);
 
@@ -1141,14 +1402,7 @@
 
             const result = JSON.parse(body);
             driverCarMessage.textContent = result.message || "Car added successfully";
-            const cars = result.cars || [];
-            driverCars.innerHTML = cars.map((car) => `
-                <article class="car-item">
-                    <strong>${car.model}</strong><br>
-                    Plate: ${car.plateNumber}<br>
-                    Color: ${car.color}
-                </article>
-            `).join("");
+            await loadDriverCars();
             driverCarForm.reset();
         } catch (error) {
             driverCarMessage.textContent = `Add car request failed: ${error}`;

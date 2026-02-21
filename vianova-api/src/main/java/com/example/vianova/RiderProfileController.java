@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 @RestController
@@ -20,6 +21,11 @@ public class RiderProfileController {
 
     private static final Map<String, List<String>> RIDER_ADDRESSES = new ConcurrentHashMap<>();
     private static final Map<String, List<PaymentOption>> RIDER_PAYMENTS = new ConcurrentHashMap<>();
+    private final RiderCardRepository riderCardRepository;
+
+    public RiderProfileController(RiderCardRepository riderCardRepository) {
+        this.riderCardRepository = riderCardRepository;
+    }
 
     @GetMapping("/profile")
     public ResponseEntity<?> getProfile(@RequestParam String riderId) {
@@ -79,6 +85,105 @@ public class RiderProfileController {
         ));
     }
 
+    @GetMapping("/cards")
+    public ResponseEntity<?> getSavedCards(@RequestParam String riderId) {
+        UUID riderUuid = parseRiderId(riderId);
+        if (riderUuid == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("message", "riderId must be a valid UUID"));
+        }
+
+        var cards = riderCardRepository.findByRiderId(riderUuid).stream()
+                .map(card -> Map.of(
+                        "cardId", card.cardId().toString(),
+                        "cardHolderName", card.cardHolderName(),
+                        "last4", card.last4(),
+                        "expiryMonth", card.expiryMonth(),
+                        "expiryYear", card.expiryYear(),
+                        "label", "Card ****" + card.last4() + " (" + pad2(card.expiryMonth()) + "/" + card.expiryYear() + ")"
+                ))
+                .toList();
+
+        return ResponseEntity.ok(Map.of(
+                "riderId", riderId,
+                "savedCards", cards
+        ));
+    }
+
+    @PostMapping("/cards/save")
+    public ResponseEntity<?> saveCard(@RequestBody SaveCardRequest request) {
+        if (request == null || isBlank(request.riderId()) || isBlank(request.cardHolderName())
+                || isBlank(request.cardNumber())) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("message", "riderId, cardHolderName and cardNumber are required"));
+        }
+
+        UUID riderUuid = parseRiderId(request.riderId());
+        if (riderUuid == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("message", "riderId must be a valid UUID"));
+        }
+        if (request.expiryMonth() < 1 || request.expiryMonth() > 12) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("message", "expiryMonth must be between 1 and 12"));
+        }
+        if (request.expiryYear() < 2026 || request.expiryYear() > 2099) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("message", "expiryYear must be between 2026 and 2099"));
+        }
+
+        String digits = request.cardNumber().replaceAll("\\D", "");
+        if (digits.length() < 12 || digits.length() > 19) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("message", "cardNumber must be 12 to 19 digits"));
+        }
+
+        String last4 = digits.substring(digits.length() - 4);
+        String holder = request.cardHolderName().trim();
+        if (riderCardRepository.exists(riderUuid, holder, last4, request.expiryMonth(), request.expiryYear())) {
+            return ResponseEntity.ok(Map.of(
+                    "message", "Card already saved",
+                    "last4", last4
+            ));
+        }
+
+        UUID cardId = riderCardRepository.save(riderUuid, holder, last4, request.expiryMonth(), request.expiryYear());
+        return ResponseEntity.ok(Map.of(
+                "message", "Card saved successfully",
+                "cardId", cardId,
+                "last4", last4
+        ));
+    }
+
+    @PostMapping("/cards/delete")
+    public ResponseEntity<?> deleteCard(@RequestBody DeleteCardRequest request) {
+        if (request == null || isBlank(request.riderId()) || isBlank(request.cardId())) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("message", "riderId and cardId are required"));
+        }
+
+        UUID riderUuid = parseRiderId(request.riderId());
+        if (riderUuid == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("message", "riderId must be a valid UUID"));
+        }
+        UUID cardUuid;
+        try {
+            cardUuid = UUID.fromString(request.cardId().trim());
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("message", "cardId must be a valid UUID"));
+        }
+
+        int deleted = riderCardRepository.delete(riderUuid, cardUuid);
+        if (deleted == 0) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", "Card not found"));
+        }
+
+        return ResponseEntity.ok(Map.of("message", "Card deleted successfully"));
+    }
+
     private List<String> getOrCreateAddresses(String riderId) {
         return RIDER_ADDRESSES.computeIfAbsent(riderId, id -> {
             List<String> defaults = new ArrayList<>();
@@ -99,6 +204,21 @@ public class RiderProfileController {
         return value == null || value.isBlank();
     }
 
+    private UUID parseRiderId(String riderId) {
+        if (isBlank(riderId)) {
+            return null;
+        }
+        try {
+            return UUID.fromString(riderId.trim());
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
+    }
+
+    private String pad2(int value) {
+        return value < 10 ? "0" + value : Integer.toString(value);
+    }
+
     public record AddAddressRequest(String riderId, String address) {
     }
 
@@ -106,5 +226,17 @@ public class RiderProfileController {
     }
 
     public record PaymentOption(String type, String details) {
+    }
+
+    public record SaveCardRequest(
+            String riderId,
+            String cardHolderName,
+            String cardNumber,
+            int expiryMonth,
+            int expiryYear
+    ) {
+    }
+
+    public record DeleteCardRequest(String riderId, String cardId) {
     }
 }
