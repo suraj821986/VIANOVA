@@ -1,0 +1,79 @@
+# Vianova
+
+## Prerequisites
+
+- Java 17+
+- Maven (or use `./mvnw`)
+- SQL Server running and reachable
+
+## 1. Enable SQL Server TCP/IP
+
+On Windows:
+
+1. Open `SQL Server Configuration Manager`
+2. Go to `SQL Server Network Configuration` -> `Protocols for <your-instance>`
+3. Enable `TCP/IP`
+4. Open `TCP/IP` -> `IP Addresses`
+5. Set `TCP Port` to `1433` (clear dynamic ports if needed)
+6. Restart SQL Server service (`SQL Server (MSSQLSERVER)` or `SQL Server (SQLEXPRESS)`)
+
+Optional quick check:
+
+- Confirm SQL Server is listening on `localhost:1433`
+
+## 2. Update DB Configuration
+
+Before starting the project, update:
+
+- `vianova-api/src/main/resources/application.properties`
+
+Set these values for your environment:
+
+```properties
+spring.datasource.url=jdbc:sqlserver://localhost:1433;databaseName=master;encrypt=true;trustServerCertificate=true
+spring.datasource.username=java_user
+spring.datasource.password=StrongPassword123
+spring.datasource.driver-class-name=com.microsoft.sqlserver.jdbc.SQLServerDriver
+```
+
+## 3. Run Schema Files
+
+Run these SQL files in SQL Server:
+
+1. `vianova-api/src/main/resources/driver-schema.sql`
+2. `vianova-api/src/main/resources/rider-schema.sql`
+
+You can run them using SSMS/Azure Data Studio in the target database.
+
+Note: the app also has SQL init enabled, but run these once manually first to ensure the database is ready.
+
+## 4. Start API
+
+From project root:
+
+```bash
+./mvnw -pl vianova-api spring-boot:run
+```
+
+API default port: `8443`
+
+## 5. Start UI
+
+In a new terminal:
+
+```bash
+./mvnw -pl vianova-ui spring-boot:run
+```
+
+UI default port: `8081`
+
+## 6. Access App
+
+Open:
+
+- `http://localhost:8081`
+
+If API URL/port changes, update:
+
+- `vianova-ui/src/main/resources/application.properties`
+  - `vianova.api.base-url=...`
