@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vianova Travel</title>
+    <title>Vianova</title>
     <link rel="stylesheet" href="/css/styles.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -14,222 +14,17 @@
     </style>
 </head>
 <body>
-<div class="shell">
-    <section class="hero">
-        <div class="hero-top">
-            <img class="app-logo" src="/images/vianova-logo.png" alt="Vianova logo">
-            <h1>Vianova Travel</h1>
-        </div>
-        <p>Book rides in seconds and see ETA, fare, and available drivers instantly.</p>
-    </section>
-
-    <section class="panel">
-        <div class="section-actions">
-            <a class="secondary" href="/rider.html" style="text-decoration:none;display:inline-block;">Switch to Rider</a>
-            <a class="primary" href="/driver.html" style="text-decoration:none;display:inline-block;">Driver Module</a>
-            <a class="secondary" href="/index.html" style="text-decoration:none;display:inline-block;">Home</a>
-        </div>
-
-        <div class="mode-toggle">
-            <button id="riderBtn" class="mode-btn active">Rider</button>
-            <button id="driverBtn" class="mode-btn">Driver</button>
-        </div>
-
-        <div id="riderView">
-            <div id="riderAuthCard" class="auth-card">
-                <h3 class="auth-title">Rider Login</h3>
-                <form id="riderLoginForm" class="auth-form">
-                    <input id="riderEmail" type="email" placeholder="Email" required>
-                    <input id="riderPassword" type="password" placeholder="Password" required>
-                    <button class="primary" type="submit">Login</button>
-                </form>
-                <div id="riderLoginMessage" class="auth-message">Please login to request rides.</div>
-                <button id="showRiderOnboardingBtn" class="link-button" type="button">New user? Start onboarding</button>
-            </div>
-
-            <div id="riderOnboardingWrap" class="hidden">
-                <h3>Rider Onboarding</h3>
-                <form id="riderOnboardingForm" class="driver-form">
-                    <input id="riderFirstName" placeholder="First name" required>
-                    <input id="riderLastName" placeholder="Last name" required>
-                    <input id="riderOnboardingEmail" class="driver-full" type="email" placeholder="Email" required>
-                    <input id="riderPhoneNumber" class="driver-full" placeholder="Phone number" required>
-                    <input id="riderOnboardingPassword" class="driver-full" type="password" minlength="8" placeholder="Password" required>
-                    <input id="riderConfirmPassword" class="driver-full" type="password" minlength="8" placeholder="Confirm password" required>
-                    <button class="primary driver-full" type="submit">Submit Rider Details</button>
-                </form>
-                <div id="riderOnboardingMessage" class="driver-message">Fill rider details to create account.</div>
-            </div>
-
-            <div id="riderActions" class="section-actions hidden">
-                <button id="riderProfileBtn" class="secondary hidden" type="button">My Profile</button>
-                <button id="riderLogoutBtn" class="secondary hidden" type="button">Logout</button>
-            </div>
-
-            <div id="riderProfilePanel" class="profile-panel hidden">
-                <h4>Home Address</h4>
-                <div id="riderAddressList" class="list-grid"></div>
-                <form id="riderAddressForm" class="profile-form">
-                    <input id="riderNewAddress" placeholder="Add new address" required>
-                    <button class="secondary" type="submit">Add Address</button>
-                </form>
-
-                <h4>Payment Options</h4>
-                <div id="riderPaymentList" class="list-grid"></div>
-                <form id="riderPaymentForm" class="profile-form payment-form">
-                    <input id="riderPaymentType" placeholder="Type (Card/Cash)" required>
-                    <input id="riderPaymentDetails" placeholder="Details (e.g. ****4432 or Cash)" required>
-                    <button class="secondary" type="submit">Add Payment</button>
-                </form>
-
-                <h4>Saved Credit Cards</h4>
-                <div id="riderSavedCardsList" class="list-grid"></div>
-                <form id="riderCardForm" class="profile-form payment-form">
-                    <input id="riderCardHolderName" placeholder="Card holder name" required>
-                    <input id="riderCardNumber" placeholder="Card number" inputmode="numeric" required>
-                    <input id="riderCardExpiryMonth" type="number" min="1" max="12" placeholder="MM" required>
-                    <input id="riderCardExpiryYear" type="number" min="2026" max="2099" placeholder="YYYY" required>
-                    <button class="secondary" type="submit">Save Card</button>
-                </form>
-                <div id="riderProfileMessage" class="profile-message">Manage rider addresses and payment options here.</div>
-            </div>
-
-            <form id="riderForm" class="rider-form hidden">
-                <div class="field source-field">
-                    <input id="source" placeholder="Source address" autocomplete="off" required>
-                    <ul id="sourceSuggestions" class="suggestions hidden"></ul>
-                </div>
-                <button class="secondary use-location-btn" id="useLocationBtn" type="button">Use My Location</button>
-                <div class="field destination-field">
-                    <input id="destination" placeholder="Destination address" autocomplete="off" required>
-                    <ul id="destinationSuggestions" class="suggestions hidden"></ul>
-                </div>
-                <input class="departure-time" id="departureTime" type="datetime-local" required>
-                <button class="primary" type="submit">Get Estimate</button>
-            </form>
-            <p id="riderHint" class="hint hidden"></p>
-            <div id="estimate" class="hidden">Fill source, destination and time, then click Get Estimate.</div>
-            <div id="drivers"></div>
-            <div id="negotiationBlock" class="chat-block hidden">
-                <h4 id="negotiationTitle">Negotiate Fare</h4>
-                <div id="negotiationMessages" class="chat-messages"></div>
-                <form id="negotiationForm" class="chat-form">
-                    <input id="negotiationFare" type="number" step="0.1" min="1" placeholder="Propose fare (USD)" required>
-                    <button class="secondary" type="submit">Send Offer</button>
-                </form>
-                <div id="negotiationActions" class="chat-actions hidden">
-                    <button id="proposeAgainBtn" class="secondary" type="button">Propose New Price</button>
-                    <button id="acceptFinalBtn" class="primary" type="button">Accept Final Price</button>
-                </div>
-            </div>
-            <div id="riderOptionsBlock" class="options-block hidden">
-                <h4>Compare Options</h4>
-                <div id="riderOptions" class="options-list"></div>
-            </div>
-            <div id="tripCheckout" class="checkout-page hidden">
-                <h4>Finalize Trip</h4>
-                <div id="tripCheckoutSummary"></div>
-                <h4>Save Card For Future Use</h4>
-                <form id="tripSaveCardForm" class="checkout-form">
-                    <input id="tripCardHolderName" placeholder="Card holder name" required>
-                    <input id="tripCardNumber" placeholder="Card number" inputmode="numeric" required>
-                    <input id="tripCardExpiryMonth" type="number" min="1" max="12" placeholder="MM" required>
-                    <input id="tripCardExpiryYear" type="number" min="2026" max="2099" placeholder="YYYY" required>
-                    <button class="secondary" type="submit">Save Card</button>
-                </form>
-                <form id="tripCheckoutForm" class="checkout-form">
-                    <select id="tripPaymentOption" required>
-                        <option value="">Select payment option</option>
-                    </select>
-                    <button class="primary" type="submit">Finalize Trip</button>
-                </form>
-                <div id="tripCheckoutMessage" class="hint"></div>
-                <div id="tripPinDisplay" class="hint"></div>
-                <div id="tripCompleteActions" class="checkout-actions hidden">
-                    <button id="completeTripBtn" class="secondary" type="button">Complete Trip</button>
-                </div>
-                <div id="tripFeedbackBlock" class="hidden">
-                    <h4>Trip Feedback</h4>
-                    <form id="tripFeedbackForm" class="feedback-form">
-                        <input id="tripTipAmount" type="number" step="0.1" min="0" placeholder="Tip amount (USD)" required>
-                        <input id="tripRating" type="number" min="1" max="5" placeholder="Rating (1-5)" required>
-                        <button class="primary" type="submit">Submit Feedback</button>
-                    </form>
-                    <div id="tripFeedbackMessage" class="hint"></div>
-                </div>
-                <div id="tripMap" class="trip-map"></div>
-            </div>
-        </div>
-
-        <div id="driverView" class="hidden">
-            <div id="driverAuthCard" class="auth-card">
-                <h3 class="auth-title">Driver Login</h3>
-                <form id="driverLoginForm" class="auth-form">
-                    <input id="driverLoginId" type="email" placeholder="Email" required>
-                    <input id="driverLoginPassword" type="password" placeholder="Password" required>
-                    <button class="primary" type="submit">Login</button>
-                </form>
-                <div id="driverLoginMessage" class="auth-message">Already registered? Login to continue.</div>
-                <button id="showOnboardingBtn" class="link-button" type="button">New user? Start onboarding</button>
-            </div>
-
-            <div id="driverDashboard" class="driver-dashboard hidden">
-                <div class="section-actions">
-                    <button id="driverLogoutBtn" class="secondary hidden" type="button">Logout</button>
-                </div>
-
-                <h4>Previous Rides</h4>
-                <div id="driverRides" class="rides-list"></div>
-
-                <div class="ratings-block">
-                    <h4>Ratings</h4>
-                    <div id="driverOverallRating" class="rating-overall"></div>
-                    <div id="driverStrengths" class="strength-list"></div>
-                </div>
-
-                <div class="cars-block">
-                    <h4>My Cars</h4>
-                    <div id="driverCars" class="cars-list"></div>
-                    <form id="driverCarForm" class="car-form">
-                        <input id="carModel" placeholder="Car model" required>
-                        <input id="carPlateNumber" placeholder="Plate number" required>
-                        <input id="carColor" placeholder="Color" required>
-                        <button class="secondary" type="submit">Add Car</button>
-                    </form>
-                    <div id="driverCarMessage" class="car-message">Existing cars are shown above.</div>
-                </div>
-
-                <h4>Update Contact Information</h4>
-                <form id="driverContactForm" class="contact-form">
-                    <input id="driverContactPhone" placeholder="Phone number" required>
-                    <input id="driverContactEmail" type="email" placeholder="Email" required>
-                    <input id="driverContactAddress" class="contact-full" placeholder="Address" required>
-                    <button class="secondary contact-full" type="submit">Update Contact Info</button>
-                </form>
-                <div id="driverContactMessage" class="contact-message">Contact information can be updated after login.</div>
-            </div>
-
-            <div id="driverOnboardingWrap" class="hidden">
-                <h3>Driver Onboarding</h3>
-                <form id="driverForm" class="driver-form">
-                    <input id="driverName" placeholder="Name" required>
-                    <input id="driverAge" type="number" min="18" placeholder="Age" required>
-                    <input id="driverSex" placeholder="Sex" required>
-                    <input id="driverExperience" type="number" min="0" placeholder="Experience in years" required>
-                    <input id="driverEmail" class="driver-full" type="email" placeholder="Email" required>
-                    <input id="driverPhoneNumber" class="driver-full" placeholder="Phone number" required>
-                    <input id="driverPassword" class="driver-full" type="password" minlength="8" placeholder="Password" required>
-                    <input id="driverConfirmPassword" class="driver-full" type="password" minlength="8" placeholder="Confirm password" required>
-                    <input id="driverSocialAddress" class="driver-full" placeholder="Social address" required>
-                    <input id="driverLicenseNumber" class="driver-full" placeholder="Driving license number" required>
-                    <input id="driverLicenseDocument" class="driver-full" type="file" accept=".pdf,.png,.jpg,.jpeg" required>
-                    <button class="primary driver-full" type="submit">Submit Driver Details</button>
-                </form>
-                <div id="driverMessage" class="driver-message">Fill the form and upload scanned license copy.</div>
-            </div>
-        </div>
-    </section>
-</div>
+<div id="app-root"></div>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="/js/modules/shared-components.js"></script>
+<script src="/js/modules/rider-components.js"></script>
+<script src="/js/modules/driver-components.js"></script>
+<script src="/js/modules/app-shell.js"></script>
+<script src="/js/react-shell.js"></script>
+<script>
+    window.VianovaReactShell.mount("driver");
+</script>
 
 <script>
     const riderBtn = document.getElementById("riderBtn");

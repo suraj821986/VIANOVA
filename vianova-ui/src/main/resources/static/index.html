@@ -3,25 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vianova Travel</title>
+    <title>Vianova</title>
     <link rel="stylesheet" href="/css/styles.css">
 </head>
 <body>
-<div class="shell">
-    <section class="hero">
-        <div class="hero-top">
-            <img class="app-logo" src="/images/vianova-logo.png" alt="Vianova logo">
-            <h1>Vianova Travel</h1>
-        </div>
-        <p>Select the module you want to open.</p>
-    </section>
-
-    <section class="panel">
-        <div class="section-actions">
-            <a class="primary" href="/rider.html" style="text-decoration:none;display:inline-block;">Open Rider Module</a>
-            <a class="secondary" href="/driver.html" style="text-decoration:none;display:inline-block;">Open Driver Module</a>
-        </div>
-    </section>
-</div>
+<div id="app-root"></div>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="/js/modules/shared-components.js"></script>
+<script src="/js/modules/rider-components.js"></script>
+<script src="/js/modules/driver-components.js"></script>
+<script src="/js/modules/app-shell.js"></script>
+<script src="/js/react-shell.js"></script>
+<script>
+    window.VianovaReactShell.mount("home");
+</script>
 </body>
 </html>
