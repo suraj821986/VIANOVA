@@ -1,0 +1,18 @@
+{
+  "rows_used": 500000,
+  "sample_rows": 500000,
+  "kf": 5,
+  "eta_mae_seconds": 241.77147592373012,
+  "fare_mae_usd": 2.4358629236433984,
+  "fare_rmse_usd": 4.76271269644772,
+  "tolls_enabled": true,
+  "tolls_mae_usd": 0.35073090685332814,
+  "tolls_rmse_usd": 1.2552629195309868,
+  "total_no_tip_mae_usd": 3.226977106047036,
+  "total_no_tip_rmse_usd": 5.738164546145647,
+  "notes": [
+    "Two-stage model: ETA (trip_duration_sec) -> Fare (fare_amount) with OOF ETA feature.",
+    "Total(no tip) computed as fare_pred + congestion + improvement + toll_pred.",
+    "Tip excluded (quote-time realism)."
+  ]
+}

@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+pandas
+joblib
+scikit-learn==1.6.1
+xgboost==2.1.4
+pydantic

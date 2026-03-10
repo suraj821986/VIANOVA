@@ -1,0 +1,18 @@
+{
+  "rows_total": 4027895,
+  "rows_train": 3222316,
+  "rows_test": 805579,
+  "mae_usd": 4.349596195847459,
+  "rmse_usd": 8.013002160872846,
+  "features": [
+    "trip_distance",
+    "trip_duration_sec",
+    "pickup_hour",
+    "pickup_dow",
+    "pickup_month",
+    "PULocationID",
+    "DOLocationID"
+  ],
+  "target": "total_amount",
+  "model": "HistGradientBoostingRegressor"
+}
