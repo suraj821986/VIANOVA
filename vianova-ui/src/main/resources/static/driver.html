@@ -15,18 +15,41 @@
 </head>
 <body>
 <div id="app-root"></div>
+<div id="chatbot-root"></div>
 <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="/js/modules/shared-components.js"></script>
+<script src="/js/modules/chatbot-components.js"></script>
 <script src="/js/modules/rider-components.js"></script>
 <script src="/js/modules/driver-components.js"></script>
 <script src="/js/modules/app-shell.js"></script>
 <script src="/js/react-shell.js"></script>
 <script>
+    window.VianovaChatContext = {
+        page: "driver",
+        userType: "",
+        userId: ""
+    };
     window.VianovaReactShell.mount("driver");
+    window.VianovaUiModules.chatbot.mount();
 </script>
 
 <script>
+    function syncChatContext(page, userType, userId) {
+        window.VianovaChatContext = {
+            page: page,
+            userType: userType || "",
+            userId: userId || ""
+        };
+        try {
+            window.sessionStorage.setItem("vianova-chat-context", JSON.stringify(window.VianovaChatContext));
+        } catch (_) {
+        }
+        window.dispatchEvent(new CustomEvent("vianova-chat-context-changed", { detail: window.VianovaChatContext }));
+    }
+
+    syncChatContext("driver", "", "");
+
     const riderBtn = document.getElementById("riderBtn");
     const driverBtn = document.getElementById("driverBtn");
     const riderView = document.getElementById("riderView");
@@ -128,6 +151,7 @@
             }
             const result = JSON.parse(body);
             currentRiderId = result.riderId || payload.emailOrId;
+            syncChatContext("driver", "RIDER", currentRiderId);
             riderLoginMessage.textContent = result.message || "Rider login successful.";
             riderAuthCard.classList.add("hidden");
             riderOnboardingWrap.classList.add("hidden");
@@ -248,6 +272,7 @@
         }
 
         currentRiderId = "";
+        syncChatContext("driver", "", "");
         riderAuthCard.classList.remove("hidden");
         riderActions.classList.add("hidden");
         riderOnboardingWrap.classList.add("hidden");
@@ -972,6 +997,7 @@
             }
             const result = JSON.parse(body);
             currentDriverId = result.driverId || payload.emailOrId;
+            syncChatContext("driver", "DRIVER", currentDriverId);
             driverLoginMessage.textContent = result.message || "Driver login successful.";
             const onboardingRequired = !!result.onboardingRequired;
             driverOnboardingWrap.classList.toggle("hidden", !onboardingRequired);
@@ -1031,6 +1057,7 @@
         }
 
         currentDriverId = "";
+        syncChatContext("driver", "", "");
         driverAuthCard.classList.remove("hidden");
         driverDashboard.classList.add("hidden");
         driverLogoutBtn.classList.add("hidden");

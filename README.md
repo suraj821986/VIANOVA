@@ -49,6 +49,16 @@ Note: the app also has SQL init enabled, but run these once manually first to en
 
 ## 4. Start API
 
+Optional LLM tool-calling configuration:
+
+```properties
+openai.api.key=YOUR_OPENAI_API_KEY
+openai.base-url=https://api.openai.com/v1
+openai.chat.model=gpt-4.1-mini
+```
+
+Without `openai.api.key`, the chatbot falls back to the local deterministic intent router.
+
 From project root:
 
 ```bash

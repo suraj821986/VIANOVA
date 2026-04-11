@@ -40,7 +40,7 @@ public class HelloProxyController {
             return ResponseEntity.status(response.statusCode()).body(response.body());
         } catch (Exception ex) {
             return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
-                    .body("Unable to reach vianova API: " + ex.getMessage());
+                    .body("Unable to reach vianova API: " + safeErrorMessage(ex));
         }
     }
 
@@ -79,6 +79,11 @@ public class HelloProxyController {
         return forwardJson("/rides/feedback", payload);
     }
 
+    @PostMapping(value = "/api/chatbot/message", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<String> chatbotMessage(@RequestBody String payload) {
+        return forwardJson("/chatbot/message", payload);
+    }
+
     @GetMapping(value = "/api/rides/tracking", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<String> tracking(@RequestParam String tripId) {
         try {
@@ -93,7 +98,7 @@ public class HelloProxyController {
             return ResponseEntity.status(response.statusCode()).body(response.body());
         } catch (Exception ex) {
             return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
-                    .body("{\"error\":\"Unable to reach vianova API: " + ex.getMessage().replace("\"", "'") + "\"}");
+                    .body(errorJson(ex));
         }
     }
 
@@ -131,7 +136,7 @@ public class HelloProxyController {
             return ResponseEntity.status(response.statusCode()).body(response.body());
         } catch (Exception ex) {
             return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
-                    .body("{\"error\":\"Unable to reach vianova API: " + ex.getMessage().replace("\"", "'") + "\"}");
+                    .body(errorJson(ex));
         }
     }
 
@@ -159,7 +164,7 @@ public class HelloProxyController {
             return ResponseEntity.status(response.statusCode()).body(response.body());
         } catch (Exception ex) {
             return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
-                    .body("{\"error\":\"Unable to reach vianova API: " + ex.getMessage().replace("\"", "'") + "\"}");
+                    .body(errorJson(ex));
         }
     }
 
@@ -192,7 +197,7 @@ public class HelloProxyController {
             return ResponseEntity.status(response.statusCode()).body(response.body());
         } catch (Exception ex) {
             return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
-                    .body("{\"error\":\"Unable to reach vianova API: " + ex.getMessage().replace("\"", "'") + "\"}");
+                    .body(errorJson(ex));
         }
     }
 
@@ -210,7 +215,7 @@ public class HelloProxyController {
             return ResponseEntity.status(response.statusCode()).body(response.body());
         } catch (Exception ex) {
             return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
-                    .body("{\"error\":\"Unable to reach vianova API: " + ex.getMessage().replace("\"", "'") + "\"}");
+                    .body(errorJson(ex));
         }
     }
 
@@ -228,7 +233,7 @@ public class HelloProxyController {
             return ResponseEntity.status(response.statusCode()).body(response.body());
         } catch (Exception ex) {
             return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
-                    .body("{\"error\":\"Unable to reach vianova API: " + ex.getMessage().replace("\"", "'") + "\"}");
+                    .body(errorJson(ex));
         }
     }
 
@@ -246,7 +251,7 @@ public class HelloProxyController {
             return ResponseEntity.status(response.statusCode()).body(response.body());
         } catch (Exception ex) {
             return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
-                    .body("{\"error\":\"Unable to reach vianova API: " + ex.getMessage().replace("\"", "'") + "\"}");
+                    .body(errorJson(ex));
         }
     }
 
@@ -291,7 +296,7 @@ public class HelloProxyController {
             return ResponseEntity.status(response.statusCode()).body(response.body());
         } catch (Exception ex) {
             return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
-                    .body("{\"error\":\"Unable to reach vianova API: " + ex.getMessage().replace("\"", "'") + "\"}");
+                    .body(errorJson(ex));
         }
     }
 
@@ -314,7 +319,19 @@ public class HelloProxyController {
             return ResponseEntity.status(response.statusCode()).body(response.body());
         } catch (Exception ex) {
             return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
-                    .body("{\"error\":\"Unable to reach vianova API: " + ex.getMessage().replace("\"", "'") + "\"}");
+                    .body(errorJson(ex));
         }
+    }
+
+    private String errorJson(Exception ex) {
+        return "{\"error\":\"Unable to reach vianova API: " + safeErrorMessage(ex).replace("\"", "'") + "\"}";
+    }
+
+    private String safeErrorMessage(Exception ex) {
+        String message = ex.getMessage();
+        if (message != null && !message.isBlank()) {
+            return message;
+        }
+        return ex.getClass().getSimpleName();
     }
 }
