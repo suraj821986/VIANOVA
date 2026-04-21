@@ -83,10 +83,21 @@ In a separate terminal:
 ```bash
 cd ml/ride-ml-service
 pip install -r requirements.txt
-uvicorn ml_inference_service:app --host 0.0.0.0 --port 8001
+python -u -m uvicorn ml_inference_service:app --host 127.0.0.1 --port 8001 > ml-service.out.log 2> ml-service.err.log
 ```
 
 ML service default port: `8001`
+
+On Windows PowerShell, you can also start it detached and keep the same log files:
+
+```powershell
+Start-Process -FilePath python -ArgumentList '-u','-m','uvicorn','ml_inference_service:app','--host','127.0.0.1','--port','8001' -WorkingDirectory 'C:\Users\suraj\IdeaProjects\vianova\ml\ride-ml-service' -RedirectStandardOutput 'C:\Users\suraj\IdeaProjects\vianova\ml\ride-ml-service\ml-service.out.log' -RedirectStandardError 'C:\Users\suraj\IdeaProjects\vianova\ml\ride-ml-service\ml-service.err.log'
+```
+
+Log files:
+
+- `ml/ride-ml-service/ml-service.out.log`
+- `ml/ride-ml-service/ml-service.err.log`
 
 ## 5. Start UI
 
