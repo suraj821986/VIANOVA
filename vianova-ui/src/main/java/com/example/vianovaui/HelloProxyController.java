@@ -74,6 +74,35 @@ public class HelloProxyController {
         return forwardJson("/rides/complete", payload);
     }
 
+    @PostMapping(value = "/api/rides/requests", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<String> createRideRequest(@RequestBody String payload) {
+        return forwardJson("/rides/requests", payload);
+    }
+
+    @GetMapping(value = "/api/rides/requests/status", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<String> rideRequestStatus(@RequestParam String requestId, @RequestParam String riderId) {
+        try {
+            String base = backendBaseUrl.endsWith("/")
+                    ? backendBaseUrl.substring(0, backendBaseUrl.length() - 1)
+                    : backendBaseUrl;
+            String encodedRequestId = URLEncoder.encode(requestId, StandardCharsets.UTF_8);
+            String encodedRiderId = URLEncoder.encode(riderId, StandardCharsets.UTF_8);
+            URI uri = URI.create(base + "/rides/requests/status?requestId=" + encodedRequestId + "&riderId=" + encodedRiderId);
+
+            HttpRequest request = HttpRequest.newBuilder(uri).GET().build();
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            return ResponseEntity.status(response.statusCode()).body(response.body());
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                    .body(errorJson(ex));
+        }
+    }
+
+    @PostMapping(value = "/api/rides/requests/accept-final", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<String> acceptRideFinalFare(@RequestBody String payload) {
+        return forwardJson("/rides/requests/accept-final", payload);
+    }
+
     @PostMapping(value = "/api/rides/feedback", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<String> rideFeedback(@RequestBody String payload) {
         return forwardJson("/rides/feedback", payload);
@@ -258,6 +287,39 @@ public class HelloProxyController {
     @PostMapping(value = "/api/drivers/cars", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<String> addDriverCar(@RequestBody String payload) {
         return forwardJson("/drivers/cars", payload);
+    }
+
+    @GetMapping(value = "/api/drivers/ride-requests", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<String> driverRideRequests(@RequestParam String driverId) {
+        try {
+            String base = backendBaseUrl.endsWith("/")
+                    ? backendBaseUrl.substring(0, backendBaseUrl.length() - 1)
+                    : backendBaseUrl;
+            String encodedDriverId = URLEncoder.encode(driverId, StandardCharsets.UTF_8);
+            URI uri = URI.create(base + "/drivers/ride-requests?driverId=" + encodedDriverId);
+
+            HttpRequest request = HttpRequest.newBuilder(uri).GET().build();
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            return ResponseEntity.status(response.statusCode()).body(response.body());
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                    .body(errorJson(ex));
+        }
+    }
+
+    @PostMapping(value = "/api/drivers/ride-requests/accept", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<String> acceptRideRequest(@RequestBody String payload) {
+        return forwardJson("/drivers/ride-requests/accept", payload);
+    }
+
+    @PostMapping(value = "/api/drivers/ride-requests/negotiate", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<String> negotiateRideRequest(@RequestBody String payload) {
+        return forwardJson("/drivers/ride-requests/negotiate", payload);
+    }
+
+    @PostMapping(value = "/api/drivers/ride-requests/accept-final", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<String> acceptRideRequestFinalFare(@RequestBody String payload) {
+        return forwardJson("/drivers/ride-requests/accept-final", payload);
     }
 
     @PostMapping(value = "/api/drivers/cars/delete", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)

@@ -119,9 +119,13 @@
     const useLocationBtn = document.getElementById("useLocationBtn");
     let currentRiderId = "";
     let currentRideRequest = null;
+    let currentRideRequestId = "";
     let selectedNegotiationDriver = null;
     let selectedNegotiationDriverId = null;
     let negotiatedFare = null;
+    let riderRideRequestPollHandle = null;
+    let lastSeenRiderOffer = "";
+    let lastSeenDriverCounterOffer = "";
     let finalizedTripId = null;
     let finalizedTripPin = null;
     let tripMap = null;
@@ -297,10 +301,14 @@
         negotiationActions.classList.add("hidden");
         negotiationMessages.innerHTML = "";
         negotiationFare.value = "";
+        stopRiderRideRequestPolling();
         currentRideRequest = null;
+        currentRideRequestId = "";
         selectedNegotiationDriver = null;
         selectedNegotiationDriverId = null;
         negotiatedFare = null;
+        lastSeenRiderOffer = "";
+        lastSeenDriverCounterOffer = "";
         riderOptions.innerHTML = "";
         resetTripCheckout();
         riderLoginForm.reset();
@@ -451,6 +459,45 @@
         setTimeout(() => tripMap.invalidateSize(), 50);
     }
 
+    function roundCurrency(value) {
+        return Math.round(value * 100) / 100;
+    }
+
+    function deriveRideOptions(estimateData) {
+        const baseFare = Number(estimateData.estimatedFare || 0);
+        const baseEta = Number(estimateData.estimatedTimeMinutes || 0);
+        return [
+            {
+                provider: "Uber",
+                car: "UberX - Toyota Corolla",
+                driver: "Daniel K.",
+                etaMinutes: Math.max(2, baseEta - 2),
+                fare: roundCurrency(baseFare + 1.8)
+            },
+            {
+                provider: "Uber",
+                car: "Uber Comfort - Honda Accord",
+                driver: "Mia T.",
+                etaMinutes: Math.max(3, baseEta - 1),
+                fare: roundCurrency(baseFare + 3.2)
+            },
+            {
+                provider: "Lyft",
+                car: "Lyft Standard - Nissan Altima",
+                driver: "Sophia M.",
+                etaMinutes: Math.max(2, baseEta - 2),
+                fare: roundCurrency(baseFare + 1.2)
+            },
+            {
+                provider: "Lyft",
+                car: "Lyft XL - Toyota Highlander",
+                driver: "Chris P.",
+                etaMinutes: Math.max(4, baseEta),
+                fare: roundCurrency(baseFare + 4.1)
+            }
+        ];
+    }
+
     const debouncedSourceSearch = debounce(() => searchAddresses(sourceInput.value.trim(), sourceSuggestions, sourceInput), 300);
     const debouncedDestinationSearch = debounce(() => searchAddresses(destinationInput.value.trim(), destinationSuggestions, destinationInput), 300);
 
@@ -538,6 +585,47 @@
                 <strong>ETA:</strong> ${data.estimatedTimeMinutes} mins<br>
                 <strong>Estimated Fare:</strong> ${data.currency} ${data.estimatedFare}
             `;
+            const options = deriveRideOptions(data);
+            riderOptionsBlock.classList.remove("hidden");
+            riderOptions.innerHTML = options.map((option) => `
+                <article class="option-card">
+                    <strong>${option.provider}</strong><br>
+                    Car: ${option.car}<br>
+                    Driver: ${option.driver}<br>
+                    ETA: ${option.etaMinutes} mins<br>
+                    Fare: ${data.currency} ${option.fare}
+                </article>
+            `).join("");
+
+            if (currentRiderId) {
+                try {
+                    const rideRequestResponse = await fetch("/api/rides/requests", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            riderId: currentRiderId,
+                            source: payload.source,
+                            destination: payload.destination,
+                            departureTime: payload.departureTime,
+                            estimatedFare: data.estimatedFare,
+                            currency: data.currency
+                        })
+                    });
+                    const rideRequestBody = await rideRequestResponse.text();
+                    if (rideRequestResponse.ok) {
+                        const rideRequest = JSON.parse(rideRequestBody);
+                        currentRideRequestId = rideRequest.requestId || "";
+                        lastSeenRiderOffer = "";
+                        lastSeenDriverCounterOffer = "";
+                        riderHint.textContent = rideRequest.message || "Ride request shared with nearby drivers.";
+                        startRiderRideRequestPolling();
+                    } else {
+                        riderHint.textContent = `Ride request was not shared with drivers: ${rideRequestBody}`;
+                    }
+                } catch (error) {
+                    riderHint.textContent = `Ride request dispatch failed: ${error}`;
+                }
+            }
 
             drivers.innerHTML = (data.availableDrivers || []).map(driver => `
                 <article class="driver-card">
@@ -560,31 +648,6 @@
                     negotiationActions.classList.add("hidden");
                 });
             });
-
-            const optionsResponse = await fetch("/api/rides/options", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
-            });
-            const optionsBody = await optionsResponse.text();
-            if (!optionsResponse.ok) {
-                riderOptionsBlock.classList.remove("hidden");
-                riderOptions.innerHTML = `<article class="option-card">Unable to load options: ${optionsBody}</article>`;
-                return;
-            }
-
-            const optionsData = JSON.parse(optionsBody);
-            const options = optionsData.options || [];
-            riderOptionsBlock.classList.remove("hidden");
-            riderOptions.innerHTML = options.map((option) => `
-                <article class="option-card">
-                    <strong>${option.provider}</strong><br>
-                    Car: ${option.car}<br>
-                    Driver: ${option.driver}<br>
-                    ETA: ${option.etaMinutes} mins<br>
-                    Fare: ${optionsData.currency} ${option.fare}
-                </article>
-            `).join("");
         } catch (error) {
             estimate.textContent = `Request failed: ${error}`;
         }
@@ -597,6 +660,17 @@
             return;
         }
 
+        const latestRequest = await loadRiderRideRequestStatus();
+        if (!latestRequest || !latestRequest.assignedDriverId) {
+            negotiationMessages.innerHTML += `<div class="chat-msg"><strong>System:</strong> Waiting for a driver to accept your ride request before negotiation can begin.</div>`;
+            negotiationMessages.scrollTop = negotiationMessages.scrollHeight;
+            riderHint.textContent = "Ride request sent. Waiting for a driver to accept before negotiation starts.";
+            return;
+        }
+        selectedNegotiationDriverId = latestRequest.assignedDriverId;
+        selectedNegotiationDriver = latestRequest.driverName || selectedNegotiationDriver || "Driver";
+        negotiationTitle.textContent = `Negotiate Fare with ${selectedNegotiationDriver}`;
+
         const proposedFare = Number(negotiationFare.value);
         if (!proposedFare || proposedFare <= 0) {
             return;
@@ -606,6 +680,8 @@
         negotiationMessages.scrollTop = negotiationMessages.scrollHeight;
 
         const payload = {
+            requestId: currentRideRequestId,
+            riderId: currentRiderId,
             source: currentRideRequest.source,
             destination: currentRideRequest.destination,
             departureTime: currentRideRequest.departureTime,
@@ -628,14 +704,16 @@
             }
 
             const data = JSON.parse(body);
-            const statusLine = data.accepted
-                ? `${selectedNegotiationDriver} accepted. Final fare: USD ${Number(data.counterOffer).toFixed(2)}`
-                : `${selectedNegotiationDriver} countered with USD ${Number(data.counterOffer).toFixed(2)}`;
-            negotiationMessages.innerHTML += `<div class="chat-msg"><strong>${selectedNegotiationDriver}:</strong> ${data.message}<br>${statusLine}</div>`;
+            const statusLine = data.counterOffer
+                ? `${selectedNegotiationDriver} last countered with USD ${Number(data.counterOffer).toFixed(2)}`
+                : `Waiting for ${selectedNegotiationDriver} to respond.`;
+            negotiationMessages.innerHTML += `<div class="chat-msg"><strong>System:</strong> ${data.message}<br>${statusLine}</div>`;
             negotiationMessages.scrollTop = negotiationMessages.scrollHeight;
-            negotiatedFare = Number(data.counterOffer);
-            negotiationActions.classList.remove("hidden");
-            acceptFinalBtn.textContent = `Accept Final Price (USD ${negotiatedFare.toFixed(2)})`;
+            if (data.counterOffer) {
+                negotiatedFare = Number(data.counterOffer);
+                negotiationActions.classList.remove("hidden");
+                acceptFinalBtn.textContent = `Accept Final Price (USD ${negotiatedFare.toFixed(2)})`;
+            }
             negotiationFare.value = "";
         } catch (error) {
             negotiationMessages.innerHTML += `<div class="chat-msg"><strong>System:</strong> Request failed: ${error}</div>`;
@@ -647,47 +725,140 @@
         negotiationFare.focus();
     });
 
+    function startRiderRideRequestPolling() {
+        stopRiderRideRequestPolling();
+        if (!currentRideRequestId || !currentRiderId) {
+            return;
+        }
+        riderRideRequestPollHandle = window.setInterval(() => {
+            loadRiderRideRequestStatus();
+        }, 5000);
+        loadRiderRideRequestStatus();
+    }
+
+    function stopRiderRideRequestPolling() {
+        if (riderRideRequestPollHandle) {
+            window.clearInterval(riderRideRequestPollHandle);
+            riderRideRequestPollHandle = null;
+        }
+    }
+
+    async function loadRiderRideRequestStatus() {
+        if (!currentRideRequestId || !currentRiderId) {
+            return null;
+        }
+
+        try {
+            const response = await fetch(`/api/rides/requests/status?requestId=${encodeURIComponent(currentRideRequestId)}&riderId=${encodeURIComponent(currentRiderId)}`);
+            const body = await response.text();
+            if (response.status === 410) {
+                const result = JSON.parse(body);
+                stopRiderRideRequestPolling();
+                currentRideRequestId = "";
+                riderHint.textContent = result.message || "No drivers are available right now. Please try again.";
+                negotiationBlock.classList.add("hidden");
+                negotiationActions.classList.add("hidden");
+                return null;
+            }
+            if (!response.ok) {
+                return null;
+            }
+
+            const request = JSON.parse(body);
+            const riderOffer = request.riderOffer === "" || request.riderOffer == null
+                ? null
+                : Number(request.riderOffer);
+            const counterOffer = request.counterOffer === "" || request.counterOffer == null
+                ? null
+                : Number(request.counterOffer);
+            const riderOfferKey = riderOffer == null ? "" : riderOffer.toFixed(2);
+            const counterOfferKey = counterOffer == null ? "" : counterOffer.toFixed(2);
+
+            if (request.status === "ACCEPTED_BY_DRIVER" && request.driverName) {
+                riderHint.textContent = `${request.driverName} accepted your ride request. Waiting for the latest counter offer.`;
+            }
+
+            if (riderOffer != null && riderOfferKey !== lastSeenRiderOffer) {
+                lastSeenRiderOffer = riderOfferKey;
+                negotiationMessages.innerHTML += `<div class="chat-msg"><strong>You:</strong> I can pay USD ${riderOffer.toFixed(2)}.</div>`;
+                negotiationMessages.scrollTop = negotiationMessages.scrollHeight;
+            }
+
+            if (counterOffer != null && counterOfferKey !== lastSeenDriverCounterOffer) {
+                selectedNegotiationDriver = request.driverName || selectedNegotiationDriver || "Driver";
+                selectedNegotiationDriverId = request.assignedDriverId || selectedNegotiationDriverId;
+                negotiatedFare = counterOffer;
+                lastSeenDriverCounterOffer = counterOfferKey;
+                negotiationTitle.textContent = `Negotiate Fare with ${selectedNegotiationDriver}`;
+                negotiationBlock.classList.remove("hidden");
+                negotiationMessages.innerHTML += `<div class="chat-msg"><strong>${selectedNegotiationDriver}:</strong> Sent a counter offer of ${request.currency || "USD"} ${counterOffer.toFixed(2)}.</div>`;
+                negotiationMessages.scrollTop = negotiationMessages.scrollHeight;
+                acceptFinalBtn.textContent = `Accept Final Price (USD ${negotiatedFare.toFixed(2)})`;
+                riderHint.textContent = `${selectedNegotiationDriver} sent a new counter offer.`;
+            }
+            if (counterOffer != null) {
+                selectedNegotiationDriver = request.driverName || selectedNegotiationDriver || "Driver";
+                selectedNegotiationDriverId = request.assignedDriverId || selectedNegotiationDriverId;
+                negotiatedFare = counterOffer;
+                negotiationTitle.textContent = `Negotiate Fare with ${selectedNegotiationDriver}`;
+                negotiationBlock.classList.remove("hidden");
+                acceptFinalBtn.textContent = `Accept Final Price (USD ${negotiatedFare.toFixed(2)})`;
+                if (!request.riderFinalAcceptance && !request.driverFinalAcceptance) {
+                    negotiationActions.classList.remove("hidden");
+                    riderHint.textContent = `${selectedNegotiationDriver} sent a counter offer. You can accept it or propose again.`;
+                } else {
+                    negotiationActions.classList.add("hidden");
+                }
+            } else {
+                negotiationActions.classList.add("hidden");
+            }
+            if (request.riderFinalAcceptance && !request.driverFinalAcceptance) {
+                riderHint.textContent = "You accepted the final fare. Waiting for driver acceptance.";
+            }
+            if (request.riderFinalAcceptance && request.driverFinalAcceptance && counterOffer != null) {
+                negotiatedFare = counterOffer;
+                selectedNegotiationDriver = request.driverName || selectedNegotiationDriver || "Driver";
+                selectedNegotiationDriverId = request.assignedDriverId || selectedNegotiationDriverId;
+                tripCheckout.classList.remove("hidden");
+                tripCheckoutSummary.textContent = `Driver: ${selectedNegotiationDriver} | Final Fare: USD ${negotiatedFare.toFixed(2)}`;
+                tripCheckoutMessage.textContent = "Both rider and driver accepted the final fare. Choose payment option and finalize trip.";
+                riderHint.textContent = "Both rider and driver accepted the final fare.";
+                await loadRiderSavedCards();
+            }
+            return request;
+        } catch (_) {
+            return null;
+        }
+    }
+
     acceptFinalBtn.addEventListener("click", async () => {
         if (!currentRideRequest || !selectedNegotiationDriver || !selectedNegotiationDriverId || !negotiatedFare) {
             return;
         }
-        riderOptionsBlock.classList.add("hidden");
-        negotiationBlock.classList.add("hidden");
-        negotiationActions.classList.add("hidden");
-        tripCompleteActions.classList.add("hidden");
-        tripFeedbackBlock.classList.add("hidden");
-        tripFeedbackMessage.textContent = "";
-        tripPinDisplay.textContent = "";
-        finalizedTripId = null;
-        finalizedTripPin = null;
-        tripCheckout.classList.remove("hidden");
-        tripCheckoutSummary.textContent = `Driver: ${selectedNegotiationDriver} | Final Fare: USD ${negotiatedFare.toFixed(2)}`;
-        tripCheckoutMessage.textContent = "Choose payment option and finalize trip.";
         try {
-            await loadRiderSavedCards();
-        } catch (_) {
-        }
-
-        try {
-            const response = await fetch("/api/rides/tracking-preview", {
+            const response = await fetch("/api/rides/requests/accept-final", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    source: currentRideRequest.source,
-                    destination: currentRideRequest.destination,
-                    driverId: selectedNegotiationDriverId,
-                    driverName: selectedNegotiationDriver
+                    requestId: currentRideRequestId,
+                    riderId: currentRiderId,
+                    driverId: selectedNegotiationDriverId
                 })
             });
             const body = await response.text();
             if (!response.ok) {
-                tripCheckoutMessage.textContent = `Unable to load map preview: ${body}`;
+                negotiationMessages.innerHTML += `<div class="chat-msg"><strong>System:</strong> Unable to accept final fare: ${body}</div>`;
+                negotiationMessages.scrollTop = negotiationMessages.scrollHeight;
                 return;
             }
-            const data = JSON.parse(body);
-            renderTripMap(data.riderLocation, data.driverLocation);
+            const result = JSON.parse(body);
+            negotiationMessages.innerHTML += `<div class="chat-msg"><strong>System:</strong> ${result.message} Waiting for driver acceptance.</div>`;
+            negotiationMessages.scrollTop = negotiationMessages.scrollHeight;
+            riderHint.textContent = "You accepted the final fare. Waiting for driver acceptance.";
+            await loadRiderRideRequestStatus();
         } catch (error) {
-            tripCheckoutMessage.textContent = `Unable to load map preview: ${error}`;
+            negotiationMessages.innerHTML += `<div class="chat-msg"><strong>System:</strong> Accept final request failed: ${error}</div>`;
+            negotiationMessages.scrollTop = negotiationMessages.scrollHeight;
         }
     });
 
@@ -698,6 +869,8 @@
         }
 
         const payload = {
+            requestId: currentRideRequestId,
+            riderId: currentRiderId,
             source: currentRideRequest.source,
             destination: currentRideRequest.destination,
             departureTime: currentRideRequest.departureTime,
@@ -756,7 +929,8 @@
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     tripId: finalizedTripId,
-                    tripPin: finalizedTripPin
+                    tripPin: finalizedTripPin,
+                    requestId: currentRideRequestId
                 })
             });
             const body = await response.text();
@@ -957,6 +1131,32 @@
     const now = new Date(Date.now() + 15 * 60000);
     dtInput.value = now.toISOString().slice(0, 16);
 
+    window.VianovaRiderChatBridge = {
+        prefillRideRequest: function prefillRideRequest(source, destination, departureTime) {
+            if (!sourceInput || !destinationInput || !riderForm) {
+                return false;
+            }
+            sourceInput.value = source || "";
+            destinationInput.value = destination || "";
+            if (departureTime && dtInput) {
+                dtInput.value = departureTime;
+            }
+            riderForm.classList.remove("hidden");
+            riderHint.classList.remove("hidden");
+            estimate.classList.remove("hidden");
+            sourceInput.dispatchEvent(new Event("input", { bubbles: true }));
+            destinationInput.dispatchEvent(new Event("input", { bubbles: true }));
+            return true;
+        },
+        submitRideEstimate: function submitRideEstimate() {
+            if (!riderForm) {
+                return false;
+            }
+            riderForm.requestSubmit();
+            return true;
+        }
+    };
+
     const driverLoginForm = document.getElementById("driverLoginForm");
     const driverLoginMessage = document.getElementById("driverLoginMessage");
     const driverAuthCard = document.getElementById("driverAuthCard");
@@ -971,10 +1171,23 @@
     const driverContactForm = document.getElementById("driverContactForm");
     const driverContactMessage = document.getElementById("driverContactMessage");
     const driverLogoutBtn = document.getElementById("driverLogoutBtn");
+    const driverRideRequests = document.getElementById("driverRideRequests");
+    const driverRideRequestsMessage = document.getElementById("driverRideRequestsMessage");
+    const driverAcceptedRideBlock = document.getElementById("driverAcceptedRideBlock");
+    const driverNegotiationTitle = document.getElementById("driverNegotiationTitle");
+    const driverAcceptedRideSummary = document.getElementById("driverAcceptedRideSummary");
+    const driverNegotiationMessages = document.getElementById("driverNegotiationMessages");
+    const driverNegotiationActions = document.getElementById("driverNegotiationActions");
+    const driverAcceptFinalBtn = document.getElementById("driverAcceptFinalBtn");
+    const driverRideNegotiationForm = document.getElementById("driverRideNegotiationForm");
+    const driverRideCounterOffer = document.getElementById("driverRideCounterOffer");
+    const driverRideNegotiationMessage = document.getElementById("driverRideNegotiationMessage");
     const driverOnboardingWrap = document.getElementById("driverOnboardingWrap");
     const driverForm = document.getElementById("driverForm");
     const driverMessage = document.getElementById("driverMessage");
     let currentDriverId = "";
+    let driverRideRequestPollHandle = null;
+    let activeDriverRideRequestId = "";
 
     driverLoginForm.addEventListener("submit", async (event) => {
         event.preventDefault();
@@ -1038,6 +1251,8 @@
                 `).join("");
             }
             await loadDriverCars();
+            await loadDriverRideRequests();
+            startDriverRideRequestPolling();
         } catch (error) {
             driverLoginMessage.textContent = `Login request failed: ${error}`;
         }
@@ -1056,6 +1271,8 @@
         }
 
         currentDriverId = "";
+        stopDriverRideRequestPolling();
+        activeDriverRideRequestId = "";
         syncChatContext("rider", "", "");
         driverAuthCard.classList.remove("hidden");
         driverDashboard.classList.add("hidden");
@@ -1065,6 +1282,15 @@
         driverOverallRating.textContent = "";
         driverStrengths.innerHTML = "";
         driverCars.innerHTML = "";
+        driverRideRequests.innerHTML = "";
+        driverRideRequestsMessage.textContent = "Nearby rider requests will appear here after login.";
+        driverAcceptedRideBlock.classList.add("hidden");
+        driverNegotiationTitle.textContent = "Accepted Ride";
+        driverAcceptedRideSummary.textContent = "";
+        driverNegotiationMessages.innerHTML = "";
+        driverNegotiationActions.classList.add("hidden");
+        driverRideNegotiationForm.reset();
+        driverRideNegotiationMessage.textContent = "Accept a ride request to start negotiating with the rider.";
         driverCarForm.reset();
         driverContactForm.reset();
         driverForm.reset();
@@ -1075,6 +1301,146 @@
         driverMessage.textContent = "Fill the form and upload scanned license copy.";
         showOnboardingBtn.textContent = "New user? Start onboarding";
     });
+
+    function renderDriverAcceptedRide(request) {
+        if (!request) {
+            driverAcceptedRideBlock.classList.add("hidden");
+            driverNegotiationTitle.textContent = "Accepted Ride";
+            driverAcceptedRideSummary.textContent = "";
+            driverNegotiationMessages.innerHTML = "";
+            driverNegotiationActions.classList.add("hidden");
+            driverRideNegotiationMessage.textContent = "Accept a ride request to start negotiating with the rider.";
+            return;
+        }
+
+        activeDriverRideRequestId = request.requestId || "";
+        driverAcceptedRideBlock.classList.remove("hidden");
+        driverNegotiationTitle.textContent = `Negotiate Fare with ${request.riderName || "Rider"}`;
+        const summaryLines = [
+            `<strong>${request.riderName || "Rider request"}</strong>`,
+            `${request.source} -> ${request.destination}`,
+            `Departure: ${request.departureTime}`,
+            `Estimated Fare: ${request.currency || "USD"} ${request.estimatedFare}`,
+            `Status: ${request.status}`,
+            `Latest Rider Offer: ${request.riderOffer ? `${request.currency || "USD"} ${Number(request.riderOffer).toFixed(2)}` : "Not sent yet"}`,
+            `Latest Counter Offer: ${request.counterOffer ? `${request.currency || "USD"} ${Number(request.counterOffer).toFixed(2)}` : "Not sent yet"}`,
+            `Rider Accepted: ${request.riderFinalAcceptance ? "Yes" : "No"}`,
+            `Driver Accepted: ${request.driverFinalAcceptance ? "Yes" : "No"}`
+        ];
+        driverAcceptedRideSummary.innerHTML = summaryLines.join("<br>");
+
+        const messageLines = [
+            `<div class="chat-msg"><strong>System:</strong> You accepted this ride request. Send a counter offer to continue the negotiation.</div>`
+        ];
+        if (request.riderOffer) {
+            messageLines.push(`<div class="chat-msg"><strong>${request.riderName || "Rider"}:</strong> I can pay ${(request.currency || "USD")} ${Number(request.riderOffer).toFixed(2)}.</div>`);
+        } else {
+            messageLines.push(`<div class="chat-msg"><strong>System:</strong> Waiting for the rider's first offer.</div>`);
+        }
+        if (request.counterOffer) {
+            messageLines.push(`<div class="chat-msg"><strong>You:</strong> Latest counter offer is ${request.currency || "USD"} ${Number(request.counterOffer).toFixed(2)}.</div>`);
+        }
+        if (request.riderFinalAcceptance && request.counterOffer) {
+            messageLines.push(`<div class="chat-msg"><strong>System:</strong> Rider accepted your counter offer of ${request.currency || "USD"} ${Number(request.counterOffer).toFixed(2)}. Confirm the final offer to finalize the trip.</div>`);
+        }
+        driverNegotiationMessages.innerHTML = messageLines.join("");
+        if (request.counterOffer && request.riderFinalAcceptance && !request.driverFinalAcceptance) {
+            driverNegotiationActions.classList.remove("hidden");
+            driverAcceptFinalBtn.textContent = `Confirm Final Offer (${request.currency || "USD"} ${Number(request.counterOffer).toFixed(2)})`;
+        } else {
+            driverNegotiationActions.classList.add("hidden");
+        }
+    }
+
+    function renderDriverRideRequests(requests) {
+        const list = Array.isArray(requests) ? requests : [];
+        const pendingRequests = list.filter((request) => request.status === "PENDING_DRIVER");
+        const activeRequest = list.find((request) =>
+            request.assignedDriverId === currentDriverId &&
+            (request.status === "ACCEPTED_BY_DRIVER" || request.status === "NEGOTIATING")
+        ) || null;
+
+        renderDriverAcceptedRide(activeRequest);
+
+        if (!pendingRequests.length) {
+            driverRideRequests.innerHTML = `<article class="ride-item">No open ride requests right now.</article>`;
+        } else {
+            driverRideRequests.innerHTML = pendingRequests.map((request) => `
+                <article class="ride-item">
+                    <strong>${request.riderName || "Rider"}</strong><br>
+                    ${request.source} -> ${request.destination}<br>
+                    Departure: ${request.departureTime}<br>
+                    Estimated Fare: ${request.currency || "USD"} ${request.estimatedFare}<br>
+                    <button class="secondary driver-ride-request-accept-btn" data-request-id="${request.requestId}" style="margin-top:8px;">Accept Ride</button>
+                </article>
+            `).join("");
+        }
+
+        document.querySelectorAll(".driver-ride-request-accept-btn").forEach((btn) => {
+            btn.addEventListener("click", async () => {
+                if (!currentDriverId) {
+                    return;
+                }
+                const requestId = btn.getAttribute("data-request-id");
+                if (!requestId) {
+                    return;
+                }
+                driverRideRequestsMessage.textContent = "Accepting ride request...";
+                try {
+                    const response = await fetch("/api/drivers/ride-requests/accept", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ driverId: currentDriverId, requestId })
+                    });
+                    const body = await response.text();
+                    if (!response.ok) {
+                        driverRideRequestsMessage.textContent = `Accept ride failed: ${body}`;
+                        return;
+                    }
+                    const result = JSON.parse(body);
+                    driverRideRequestsMessage.textContent = result.message || "Ride request accepted.";
+                    renderDriverAcceptedRide(result);
+                    driverNegotiationMessages.innerHTML = `<div class="chat-msg"><strong>System:</strong> You accepted ${result.riderName || "the rider"}'s request. Start the fare negotiation below.</div>`;
+                    await loadDriverRideRequests();
+                } catch (error) {
+                    driverRideRequestsMessage.textContent = `Accept ride request failed: ${error}`;
+                }
+            });
+        });
+    }
+
+    async function loadDriverRideRequests() {
+        if (!currentDriverId) {
+            return;
+        }
+        try {
+            const response = await fetch(`/api/drivers/ride-requests?driverId=${encodeURIComponent(currentDriverId)}`);
+            const body = await response.text();
+            if (!response.ok) {
+                driverRideRequestsMessage.textContent = `Unable to load ride requests: ${body}`;
+                return;
+            }
+            const data = JSON.parse(body);
+            driverRideRequestsMessage.textContent = "Polling for rider requests every 10 seconds.";
+            renderDriverRideRequests(data.requests || []);
+        } catch (error) {
+            driverRideRequestsMessage.textContent = `Ride request polling failed: ${error}`;
+        }
+    }
+
+    function startDriverRideRequestPolling() {
+        stopDriverRideRequestPolling();
+        driverRideRequestPollHandle = window.setInterval(() => {
+            loadDriverRideRequests();
+        }, 10000);
+    }
+
+    function stopDriverRideRequestPolling() {
+        if (driverRideRequestPollHandle) {
+            window.clearInterval(driverRideRequestPollHandle);
+            driverRideRequestPollHandle = null;
+        }
+    }
 
     async function loadDriverCars() {
         const response = await fetch(`/api/drivers/cars?driverId=${encodeURIComponent(currentDriverId)}`);
@@ -1238,6 +1604,79 @@
             driverCarForm.reset();
         } catch (error) {
             driverCarMessage.textContent = `Add car request failed: ${error}`;
+        }
+    });
+
+    driverRideNegotiationForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        if (!currentDriverId || !activeDriverRideRequestId) {
+            driverRideNegotiationMessage.textContent = "Accept a ride request before sending a counter offer.";
+            return;
+        }
+
+        const counterOffer = Number(driverRideCounterOffer.value);
+        if (!counterOffer || counterOffer <= 0) {
+            driverRideNegotiationMessage.textContent = "Enter a valid counter offer.";
+            return;
+        }
+
+        driverNegotiationMessages.innerHTML += `<div class="chat-msg"><strong>You:</strong> I can do ${counterOffer.toFixed(2)} USD for this trip.</div>`;
+        driverNegotiationMessages.scrollTop = driverNegotiationMessages.scrollHeight;
+        driverRideNegotiationMessage.textContent = "Sending counter offer...";
+        try {
+            const response = await fetch("/api/drivers/ride-requests/negotiate", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    driverId: currentDriverId,
+                    requestId: activeDriverRideRequestId,
+                    counterOffer
+                })
+            });
+            const body = await response.text();
+            if (!response.ok) {
+                driverRideNegotiationMessage.textContent = `Counter offer failed: ${body}`;
+                return;
+            }
+            const result = JSON.parse(body);
+            driverRideNegotiationMessage.textContent = result.message || "Counter offer saved.";
+            driverNegotiationMessages.innerHTML += `<div class="chat-msg"><strong>System:</strong> Counter offer sent to the rider at ${(result.currency || "USD")} ${Number(result.counterOffer).toFixed(2)}.</div>`;
+            driverNegotiationMessages.scrollTop = driverNegotiationMessages.scrollHeight;
+            driverRideCounterOffer.value = "";
+            await loadDriverRideRequests();
+        } catch (error) {
+            driverRideNegotiationMessage.textContent = `Counter offer request failed: ${error}`;
+        }
+    });
+
+    driverAcceptFinalBtn.addEventListener("click", async () => {
+        if (!currentDriverId || !activeDriverRideRequestId) {
+            driverRideNegotiationMessage.textContent = "Accept a ride request before accepting the final fare.";
+            return;
+        }
+
+        driverRideNegotiationMessage.textContent = "Accepting rider offer...";
+        try {
+            const response = await fetch("/api/drivers/ride-requests/accept-final", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    driverId: currentDriverId,
+                    requestId: activeDriverRideRequestId
+                })
+            });
+            const body = await response.text();
+            if (!response.ok) {
+                driverRideNegotiationMessage.textContent = `Accept final fare failed: ${body}`;
+                return;
+            }
+            const result = JSON.parse(body);
+            driverRideNegotiationMessage.textContent = result.message || "Driver accepted the final fare.";
+            driverNegotiationMessages.innerHTML += `<div class="chat-msg"><strong>System:</strong> You accepted the rider's final fare.</div>`;
+            driverNegotiationMessages.scrollTop = driverNegotiationMessages.scrollHeight;
+            await loadDriverRideRequests();
+        } catch (error) {
+            driverRideNegotiationMessage.textContent = `Accept final fare request failed: ${error}`;
         }
     });
 </script>

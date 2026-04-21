@@ -110,6 +110,15 @@ public class OpenAiToolCallingService {
                 functionTool("get_rider_payment_options", "Fetch payment options for the logged-in rider.", Map.of("type", "object", "properties", Map.of())),
                 functionTool("get_driver_cars", "Fetch registered cars for the logged-in driver.", Map.of("type", "object", "properties", Map.of())),
                 functionTool("get_driver_ratings", "Fetch ratings and strengths for the logged-in driver.", Map.of("type", "object", "properties", Map.of())),
+                functionTool("book_rider_ride", "Book a ride for the logged-in rider using source, destination, and optionally departureTime in ISO local datetime format.", Map.of(
+                        "type", "object",
+                        "properties", Map.of(
+                                "source", Map.of("type", "string", "description", "Ride pickup location."),
+                                "destination", Map.of("type", "string", "description", "Ride drop-off location."),
+                                "departureTime", Map.of("type", "string", "description", "Optional ISO local datetime like 2026-04-10T20:15.")
+                        ),
+                        "required", List.of("source", "destination")
+                )),
                 functionTool("get_trip_status", "Fetch live trip status by trip ID.", Map.of(
                         "type", "object",
                         "properties", Map.of("tripId", Map.of("type", "string", "description", "Trip ID like TRIP-1234ABCD")),
@@ -169,11 +178,11 @@ public class OpenAiToolCallingService {
                 Prefer tools over guessing.
                 If the required user context is missing, explain that login is required.
                 Keep answers concise and directly useful.
-                Supported tool domains: driver rides, rider saved cards, rider payment options, driver cars, driver ratings, and trip status.
+                Supported tool domains: rider ride booking, driver rides, rider saved cards, rider payment options, driver cars, driver ratings, and trip status.
                 """;
     }
 
     private List<String> defaultSuggestions() {
-        return List.of("show my last 10 rides", "show my saved cards", "show my payment options", "show my ratings");
+        return List.of("book me a ride from Downtown to Airport", "show my saved cards", "show my payment options", "track trip TRIP-1234ABCD");
     }
 }

@@ -34,6 +34,35 @@
         );
     }
 
+    function DriverRideRequestsSection() {
+        return h(
+            "div",
+            { className: "chat-block" },
+            h("h4", null, "Incoming Ride Requests"),
+            h("div", { id: "driverRideRequestsMessage", className: "hint" }, "Nearby rider requests will appear here after login."),
+            h("div", { id: "driverRideRequests", className: "rides-list" }),
+            h(
+                "div",
+                { id: "driverAcceptedRideBlock", className: "chat-block hidden" },
+                h("h4", { id: "driverNegotiationTitle" }, "Accepted Ride"),
+                h("div", { id: "driverAcceptedRideSummary", className: "list-item" }),
+                h("div", { id: "driverNegotiationMessages", className: "rides-list" }),
+                h(
+                    "div",
+                    { id: "driverNegotiationActions", className: "section-actions" },
+                    h("button", { id: "driverAcceptFinalBtn", className: "primary", type: "button" }, "Accept Rider Offer")
+                ),
+                h(
+                    "form",
+                    { id: "driverRideNegotiationForm", className: "chat-form" },
+                    h("input", { id: "driverRideCounterOffer", type: "number", step: "0.1", min: "1", placeholder: "Counter offer (USD)", required: true }),
+                    h("button", { className: "secondary", type: "submit" }, "Send Counter Offer")
+                ),
+                h("div", { id: "driverRideNegotiationMessage", className: "hint" }, "Accept a ride request to start negotiating with the rider.")
+            )
+        );
+    }
+
     function DriverRatingsSection() {
         return h(
             "div",
@@ -88,6 +117,7 @@
                 { className: "section-actions" },
                 h("button", { id: "driverLogoutBtn", className: "secondary hidden", type: "button" }, "Logout")
             ),
+            h(DriverRideRequestsSection),
             h(DriverRidesSection),
             h(DriverRatingsSection),
             h(DriverCarsSection),

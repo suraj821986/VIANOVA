@@ -67,6 +67,27 @@ From project root:
 
 API default port: `8443`
 
+Optional ML fare/ETA service configuration in `vianova-api/src/main/resources/application.properties`:
+
+```properties
+ml.service.enabled=true
+ml.service.base-url=http://127.0.0.1:8001
+```
+
+When enabled, `/rides/estimate` and the server-side estimate used for `/rides/requests` call the Python ML service first and fall back to a local heuristic if the service is unavailable.
+
+## 4a. Start ML Service
+
+In a separate terminal:
+
+```bash
+cd ml/ride-ml-service
+pip install -r requirements.txt
+uvicorn ml_inference_service:app --host 0.0.0.0 --port 8001
+```
+
+ML service default port: `8001`
+
 ## 5. Start UI
 
 In a new terminal:

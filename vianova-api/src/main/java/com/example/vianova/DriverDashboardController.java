@@ -46,6 +46,125 @@ public class DriverDashboardController {
         return ResponseEntity.ok(Map.of("driverId", driverId, "rides", rides));
     }
 
+    @GetMapping("/ride-requests")
+    public ResponseEntity<?> rideRequests(@RequestParam String driverId) {
+        UUID driverUuid = parseDriverId(driverId);
+        if (driverUuid == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", "driverId is required"));
+        }
+
+        var requests = driverDashboardRepository.findRideRequests(driverUuid).stream()
+                .map(request -> Map.ofEntries(
+                        Map.entry("requestId", request.requestId()),
+                        Map.entry("riderId", request.riderId()),
+                        Map.entry("riderName", request.riderName()),
+                        Map.entry("source", request.source()),
+                        Map.entry("destination", request.destination()),
+                        Map.entry("departureTime", request.departureTime()),
+                        Map.entry("estimatedFare", request.estimatedFare()),
+                        Map.entry("currency", request.currency()),
+                        Map.entry("status", request.status()),
+                        Map.entry("riderOffer", request.riderOffer() == null ? "" : request.riderOffer()),
+                        Map.entry("counterOffer", request.counterOffer() == null ? "" : request.counterOffer()),
+                        Map.entry("riderFinalAcceptance", request.riderFinalAcceptance()),
+                        Map.entry("driverFinalAcceptance", request.driverFinalAcceptance()),
+                        Map.entry("assignedDriverId", request.assignedDriverId() == null ? "" : request.assignedDriverId())
+                ))
+                .toList();
+        return ResponseEntity.ok(Map.of(
+                "driverId", driverId,
+                "requests", requests
+        ));
+    }
+
+    @PostMapping("/ride-requests/accept")
+    public ResponseEntity<?> acceptRideRequest(@RequestBody AcceptRideRequest request) {
+        if (request == null || isBlank(request.driverId()) || isBlank(request.requestId())) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("message", "driverId and requestId are required"));
+        }
+        UUID driverUuid = parseDriverId(request.driverId());
+        UUID requestUuid = parseUuid(request.requestId());
+        if (driverUuid == null || requestUuid == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("message", "driverId and requestId must be valid UUIDs"));
+        }
+
+        return driverDashboardRepository.acceptRideRequest(requestUuid, driverUuid)
+                .<ResponseEntity<?>>map(accepted -> ResponseEntity.ok(Map.ofEntries(
+                        Map.entry("message", "Ride request accepted. You can now start negotiating with the rider."),
+                        Map.entry("requestId", accepted.requestId()),
+                        Map.entry("status", accepted.status()),
+                        Map.entry("source", accepted.source()),
+                        Map.entry("destination", accepted.destination()),
+                        Map.entry("departureTime", accepted.departureTime()),
+                        Map.entry("estimatedFare", accepted.estimatedFare()),
+                        Map.entry("currency", accepted.currency()),
+                        Map.entry("riderName", accepted.riderName()),
+                        Map.entry("riderOffer", accepted.riderOffer() == null ? "" : accepted.riderOffer()),
+                        Map.entry("counterOffer", accepted.counterOffer() == null ? "" : accepted.counterOffer()),
+                        Map.entry("riderFinalAcceptance", accepted.riderFinalAcceptance()),
+                        Map.entry("driverFinalAcceptance", accepted.driverFinalAcceptance())
+                )))
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(Map.of("message", "Ride request is no longer available")));
+    }
+
+    @PostMapping("/ride-requests/negotiate")
+    public ResponseEntity<?> negotiateRideRequest(@RequestBody NegotiateRideRequest request) {
+        if (request == null || isBlank(request.driverId()) || isBlank(request.requestId()) || request.counterOffer() <= 0) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("message", "driverId, requestId and positive counterOffer are required"));
+        }
+        UUID driverUuid = parseDriverId(request.driverId());
+        UUID requestUuid = parseUuid(request.requestId());
+        if (driverUuid == null || requestUuid == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("message", "driverId and requestId must be valid UUIDs"));
+        }
+
+        return driverDashboardRepository.submitCounterOffer(requestUuid, driverUuid, request.counterOffer())
+                .<ResponseEntity<?>>map(updated -> ResponseEntity.ok(Map.of(
+                        "message", "Counter offer saved. Rider can continue the negotiation from this request.",
+                        "requestId", updated.requestId(),
+                        "status", updated.status(),
+                        "riderOffer", updated.riderOffer() == null ? "" : updated.riderOffer(),
+                        "counterOffer", updated.counterOffer(),
+                        "riderFinalAcceptance", updated.riderFinalAcceptance(),
+                        "driverFinalAcceptance", updated.driverFinalAcceptance(),
+                        "currency", updated.currency(),
+                        "riderName", updated.riderName()
+                )))
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(Map.of("message", "Accept the ride request before sending a counter offer")));
+    }
+
+    @PostMapping("/ride-requests/accept-final")
+    public ResponseEntity<?> acceptFinalFare(@RequestBody AcceptRideRequest request) {
+        if (request == null || isBlank(request.driverId()) || isBlank(request.requestId())) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("message", "driverId and requestId are required"));
+        }
+        UUID driverUuid = parseDriverId(request.driverId());
+        UUID requestUuid = parseUuid(request.requestId());
+        if (driverUuid == null || requestUuid == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("message", "driverId and requestId must be valid UUIDs"));
+        }
+
+        return driverDashboardRepository.acceptFinalFare(requestUuid, driverUuid)
+                .<ResponseEntity<?>>map(updated -> ResponseEntity.ok(Map.ofEntries(
+                        Map.entry("message", "Driver accepted the final fare."),
+                        Map.entry("requestId", updated.requestId()),
+                        Map.entry("riderOffer", updated.riderOffer() == null ? "" : updated.riderOffer()),
+                        Map.entry("counterOffer", updated.counterOffer() == null ? "" : updated.counterOffer()),
+                        Map.entry("riderFinalAcceptance", updated.riderFinalAcceptance()),
+                        Map.entry("driverFinalAcceptance", updated.driverFinalAcceptance())
+                )))
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(Map.of("message", "No rider offer is available to accept yet")));
+    }
+
     @PostMapping("/contact/update")
     public ResponseEntity<?> updateContact(@RequestBody ContactUpdateRequest request) {
         if (request == null || isBlank(request.driverId()) || isBlank(request.phone()) || isBlank(request.email()) || isBlank(request.address())) {
@@ -274,10 +393,27 @@ public class DriverDashboardController {
         }
     }
 
+    private UUID parseUuid(String value) {
+        if (isBlank(value)) {
+            return null;
+        }
+        try {
+            return UUID.fromString(value.trim());
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
+    }
+
     public record ContactUpdateRequest(String driverId, String phone, String email, String address) {
     }
 
     public record AddCarRequest(String driverId, String model, String plateNumber, String color) {
+    }
+
+    public record AcceptRideRequest(String driverId, String requestId) {
+    }
+
+    public record NegotiateRideRequest(String driverId, String requestId, double counterOffer) {
     }
 
     public record CarInfo(Long carId, String model, String plateNumber, String color) {

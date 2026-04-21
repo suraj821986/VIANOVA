@@ -266,6 +266,17 @@ a {
     box-shadow: 0 14px 28px rgba(55, 182, 255, 0.34);
 }
 
+.driver-card .secondary,
+.option-card .secondary,
+.chat-msg .secondary,
+.list-item .secondary,
+.ride-item .secondary {
+    color: var(--text-dark);
+    background: rgba(18, 37, 61, 0.06);
+    border-color: rgba(18, 37, 61, 0.16);
+    backdrop-filter: none;
+}
+
 .mode-toggle {
     display: flex;
     gap: 0.75rem;
@@ -656,6 +667,10 @@ select option {
     gap: 0.75rem;
 }
 
+.chatbot-input-wrap {
+    position: relative;
+}
+
 .chatbot-minimize-btn {
     min-height: 2.5rem;
     padding-inline: 0.95rem;
@@ -664,6 +679,77 @@ select option {
 
 .chatbot-input {
     min-height: 6rem;
+}
+
+.chatbot-suggestions {
+    position: absolute;
+    right: 0;
+    left: 0;
+    bottom: calc(100% + 0.5rem);
+    display: grid;
+    gap: 0.45rem;
+    padding: 0.7rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: rgba(8, 20, 36, 0.98);
+    box-shadow: var(--shadow-md);
+}
+
+.chatbot-suggestions-label {
+    margin: 0 0 0.15rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: rgba(244, 248, 255, 0.66);
+}
+
+.chatbot-suggestions-state,
+.chatbot-suggestions-feedback {
+    margin: 0;
+    font-size: 0.85rem;
+    line-height: 1.45;
+    color: rgba(244, 248, 255, 0.78);
+}
+
+.chatbot-suggestions-feedback {
+    color: rgba(143, 178, 214, 0.9);
+}
+
+.chatbot-suggestion {
+    width: 100%;
+    padding: 0.7rem 0.8rem;
+    border: 1px solid rgba(143, 178, 214, 0.14);
+    border-radius: 0.9rem;
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.chatbot-suggestion:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.chatbot-booking-ready {
+    display: grid;
+    gap: 0.6rem;
+    margin-top: 0.75rem;
+    padding: 0.8rem;
+    border: 1px solid rgba(143, 178, 214, 0.16);
+    border-radius: var(--radius-md);
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.chatbot-booking-ready-label {
+    margin: 0;
+    color: rgba(244, 248, 255, 0.82);
+    line-height: 1.5;
+}
+
+.chatbot-booking-ready-btn {
+    width: 100%;
 }
 
 .chatbot-footer {

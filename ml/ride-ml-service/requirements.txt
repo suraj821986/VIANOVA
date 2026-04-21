@@ -6,3 +6,6 @@ scikit-learn==1.6.1
 xgboost==2.1.4
 pydantic
 requests
+geopandas
+shapely
+pyogrio
