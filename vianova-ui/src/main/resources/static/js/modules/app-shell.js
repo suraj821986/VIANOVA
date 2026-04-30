@@ -44,21 +44,24 @@
             return;
         }
 
-        if (ReactDOMRef.createRoot) {
+        if (ReactDOMRef.createRoot && typeof ReactDOMRef.flushSync === "function") {
             const root = ReactDOMRef.createRoot(container);
             const renderApp = function () {
                 root.render(h(App, { page: page }));
             };
 
-            if (typeof ReactDOMRef.flushSync === "function") {
-                ReactDOMRef.flushSync(renderApp);
-            } else {
-                renderApp();
-            }
+            ReactDOMRef.flushSync(renderApp);
             return;
         }
 
-        ReactDOMRef.render(h(App, { page: page }), container);
+        if (typeof ReactDOMRef.render === "function") {
+            ReactDOMRef.render(h(App, { page: page }), container);
+            return;
+        }
+
+        if (ReactDOMRef.createRoot) {
+            ReactDOMRef.createRoot(container).render(h(App, { page: page }));
+        }
     }
 
     window.VianovaUiModules.appShell = {

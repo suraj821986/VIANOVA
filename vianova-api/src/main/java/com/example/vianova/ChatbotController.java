@@ -22,6 +22,6 @@ public class ChatbotController {
     public record ChatbotRequest(String message, String userId, String userType, String page) {
     }
 
-    public record ChatbotResponse(String response, String source, String timestamp, java.util.List<String> suggestions, String intent) {
+    public record ChatbotResponse(String response, String source, String timestamp, java.util.List<String> suggestions, String intent, java.util.Map<String, Object> payload) {
     }
 }

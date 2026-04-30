@@ -18,7 +18,7 @@
         const [messages, setMessages] = useState([
             {
                 role: "assistant",
-                text: "Ask about booking rides, payments, cards, ratings, cars, or trip tracking. Example: book me a ride from Downtown to Airport."
+                text: "Ask for ride estimates, payments, cards, ratings, cars, ride history, or trip tracking."
             }
         ]);
         const [input, setInput] = useState("");
@@ -128,14 +128,14 @@
                     setMessages(function (current) {
                         return current.concat({
                             role: "assistant",
-                            text: "I filled the rider form from chat and triggered the estimate flow in the UI."
+                            text: "I filled the rider form from chat and started the estimate flow in the UI."
                         });
                     });
                     setInput("");
                     setAddressSuggestions([]);
                     setActiveAddressField("");
                     setSuggestionFeedback("");
-                    setStatus("Rider form updated from chat");
+                    setStatus("Rider estimate opened from chat");
                     return;
                 }
             }
@@ -167,6 +167,11 @@
                 const lines = [result.response || "Mocked response received."];
                 if (Array.isArray(result.suggestions) && result.suggestions.length) {
                     lines.push("Suggestions: " + result.suggestions.join(" | "));
+                }
+                if (result.payload && result.payload.rideEstimate) {
+                    window.dispatchEvent(new CustomEvent("vianova-chat-ride-estimate", {
+                        detail: result.payload.rideEstimate
+                    }));
                 }
 
                 setMessages(function (current) {
@@ -214,7 +219,7 @@
                         null,
                         h("p", { className: "chatbot-eyebrow" }, "Assistant"),
                         h("h3", null, "Vianova Chatbot"),
-                        h("p", { className: "chatbot-subtitle" }, "Ask for ride booking, cards, payments, ratings, cars, or trip tracking."),
+                        h("p", { className: "chatbot-subtitle" }, "Ask for ride estimates, cards, payments, ratings, cars, ride history, or trip tracking."),
                         h("p", { className: "chatbot-session" }, formatContextStatus(chatContext))
                     ),
                     h(
@@ -257,7 +262,7 @@
                                 ref: inputRef,
                                 className: "chatbot-input",
                                 rows: 3,
-                                placeholder: "Try: book me a ride from Downtown to Airport",
+                                placeholder: "Try: book a ride from JFK Airport to Times Square",
                                 value: input,
                                 onChange: function (event) {
                                     setInput(event.target.value);
@@ -307,9 +312,8 @@
                                             suggestion.display_name || ""
                                         );
                                     })
-                            )
-                                : null
-                            ,
+                                )
+                                : null,
                             confirmedRideFields.source && confirmedRideFields.destination
                                 ? h(
                                     "div",
@@ -578,4 +582,5 @@
 
         return { field: "", query: "" };
     }
+
 }());

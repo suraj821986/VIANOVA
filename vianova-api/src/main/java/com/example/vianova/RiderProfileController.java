@@ -22,9 +22,11 @@ public class RiderProfileController {
     private static final Map<String, List<String>> RIDER_ADDRESSES = new ConcurrentHashMap<>();
     private static final Map<String, List<PaymentOption>> RIDER_PAYMENTS = new ConcurrentHashMap<>();
     private final RiderCardRepository riderCardRepository;
+    private final RideFlowRepository rideFlowRepository;
 
-    public RiderProfileController(RiderCardRepository riderCardRepository) {
+    public RiderProfileController(RiderCardRepository riderCardRepository, RideFlowRepository rideFlowRepository) {
         this.riderCardRepository = riderCardRepository;
+        this.rideFlowRepository = rideFlowRepository;
     }
 
     @GetMapping("/profile")
@@ -107,6 +109,43 @@ public class RiderProfileController {
         return ResponseEntity.ok(Map.of(
                 "riderId", riderId,
                 "savedCards", cards
+        ));
+    }
+
+    @GetMapping("/rides")
+    public ResponseEntity<?> getRides(
+            @RequestParam String riderId,
+            @RequestParam(defaultValue = "5") int limit
+    ) {
+        UUID riderUuid = parseRiderId(riderId);
+        if (riderUuid == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("message", "riderId must be a valid UUID"));
+        }
+
+        int safeLimit = Math.max(1, Math.min(20, limit));
+        var rides = rideFlowRepository.findRiderRideHistory(riderUuid, safeLimit).stream()
+                .map(ride -> Map.ofEntries(
+                        Map.entry("requestId", ride.requestId().toString()),
+                        Map.entry("driverId", ride.assignedDriverId() == null ? "" : ride.assignedDriverId().toString()),
+                        Map.entry("driverName", ride.driverName() == null ? "" : ride.driverName()),
+                        Map.entry("source", ride.source()),
+                        Map.entry("destination", ride.destination()),
+                        Map.entry("departureTime", ride.departureTime()),
+                        Map.entry("estimatedFare", ride.estimatedFare()),
+                        Map.entry("finalFare", ride.counterOffer() == null ? ride.estimatedFare() : ride.counterOffer()),
+                        Map.entry("currency", ride.currency()),
+                        Map.entry("status", ride.status()),
+                        Map.entry("riderOffer", ride.riderOffer() == null ? "" : ride.riderOffer()),
+                        Map.entry("counterOffer", ride.counterOffer() == null ? "" : ride.counterOffer()),
+                        Map.entry("updatedAt", ride.updatedAt())
+                ))
+                .toList();
+
+        return ResponseEntity.ok(Map.of(
+                "riderId", riderId,
+                "count", rides.size(),
+                "rides", rides
         ));
     }
 

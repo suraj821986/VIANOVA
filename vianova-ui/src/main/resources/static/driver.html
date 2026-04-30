@@ -96,6 +96,8 @@
     const negotiationForm = document.getElementById("negotiationForm");
     const negotiationFare = document.getElementById("negotiationFare");
     const negotiationActions = document.getElementById("negotiationActions");
+    const negotiationLauncherBtn = document.getElementById("negotiationLauncherBtn");
+    const negotiationMinimizeBtn = document.getElementById("negotiationMinimizeBtn");
     const proposeAgainBtn = document.getElementById("proposeAgainBtn");
     const acceptFinalBtn = document.getElementById("acceptFinalBtn");
     const tripCheckout = document.getElementById("tripCheckout");
@@ -130,6 +132,23 @@
     let driverMarker = null;
 
     let activeRequestId = 0;
+
+    function openNegotiationPanel() {
+        negotiationBlock.classList.remove("hidden");
+        negotiationLauncherBtn.classList.add("hidden");
+    }
+
+    function minimizeNegotiationPanel() {
+        negotiationBlock.classList.add("hidden");
+        if (negotiationMessages.textContent.trim()) {
+            negotiationLauncherBtn.classList.remove("hidden");
+        }
+    }
+
+    if (negotiationLauncherBtn && negotiationMinimizeBtn) {
+        negotiationLauncherBtn.addEventListener("click", openNegotiationPanel);
+        negotiationMinimizeBtn.addEventListener("click", minimizeNegotiationPanel);
+    }
 
     riderLoginForm.addEventListener("submit", async (event) => {
         event.preventDefault();
@@ -295,6 +314,7 @@
         estimate.classList.add("hidden");
         riderOptionsBlock.classList.add("hidden");
         negotiationBlock.classList.add("hidden");
+        negotiationLauncherBtn.classList.add("hidden");
         negotiationActions.classList.add("hidden");
         negotiationMessages.innerHTML = "";
         negotiationFare.value = "";
@@ -549,6 +569,7 @@
         riderOptionsBlock.classList.add("hidden");
         riderOptions.innerHTML = "";
         negotiationBlock.classList.add("hidden");
+        negotiationLauncherBtn.classList.add("hidden");
         negotiationActions.classList.add("hidden");
         negotiationMessages.innerHTML = "";
         negotiationFare.value = "";
@@ -607,7 +628,7 @@
                     negotiatedFare = null;
                     negotiationTitle.textContent = `Negotiate Fare with ${selectedNegotiationDriver}`;
                     negotiationMessages.innerHTML = `<div class="chat-msg"><strong>System:</strong> Start by sending your offer to ${selectedNegotiationDriver}.</div>`;
-                    negotiationBlock.classList.remove("hidden");
+                    openNegotiationPanel();
                     negotiationActions.classList.add("hidden");
                 });
             });
@@ -616,7 +637,8 @@
         }
     });
 
-    negotiationForm.addEventListener("submit", async (event) => {
+    if (negotiationForm) {
+        negotiationForm.addEventListener("submit", async (event) => {
         event.preventDefault();
         if (!currentRideRequest || !selectedNegotiationDriver || !selectedNegotiationDriverId) {
             negotiationMessages.innerHTML = `<div class="chat-msg"><strong>System:</strong> Pick a driver from estimate cards first.</div>`;
@@ -667,13 +689,17 @@
             negotiationMessages.innerHTML += `<div class="chat-msg"><strong>System:</strong> Request failed: ${error}</div>`;
             negotiationMessages.scrollTop = negotiationMessages.scrollHeight;
         }
-    });
+        });
+    }
 
-    proposeAgainBtn.addEventListener("click", () => {
-        negotiationFare.focus();
-    });
+    if (proposeAgainBtn && negotiationFare) {
+        proposeAgainBtn.addEventListener("click", () => {
+            negotiationFare.focus();
+        });
+    }
 
-    acceptFinalBtn.addEventListener("click", async () => {
+    if (acceptFinalBtn) {
+        acceptFinalBtn.addEventListener("click", async () => {
         if (!currentRideRequest || !selectedNegotiationDriver || !selectedNegotiationDriverId || !negotiatedFare) {
             return;
         }
@@ -715,7 +741,8 @@
         } catch (error) {
             tripCheckoutMessage.textContent = `Unable to load map preview: ${error}`;
         }
-    });
+        });
+    }
 
     tripCheckoutForm.addEventListener("submit", async (event) => {
         event.preventDefault();
@@ -983,32 +1010,6 @@
     const now = new Date(Date.now() + 15 * 60000);
     dtInput.value = now.toISOString().slice(0, 16);
 
-    window.VianovaRiderChatBridge = {
-        prefillRideRequest: function prefillRideRequest(source, destination, departureTime) {
-            if (!sourceInput || !destinationInput || !riderForm) {
-                return false;
-            }
-            sourceInput.value = source || "";
-            destinationInput.value = destination || "";
-            if (departureTime && dtInput) {
-                dtInput.value = departureTime;
-            }
-            riderForm.classList.remove("hidden");
-            riderHint.classList.remove("hidden");
-            estimate.classList.remove("hidden");
-            sourceInput.dispatchEvent(new Event("input", { bubbles: true }));
-            destinationInput.dispatchEvent(new Event("input", { bubbles: true }));
-            return true;
-        },
-        submitRideEstimate: function submitRideEstimate() {
-            if (!riderForm) {
-                return false;
-            }
-            riderForm.requestSubmit();
-            return true;
-        }
-    };
-
     const driverLoginForm = document.getElementById("driverLoginForm");
     const driverLoginMessage = document.getElementById("driverLoginMessage");
     const driverAuthCard = document.getElementById("driverAuthCard");
@@ -1026,16 +1027,71 @@
     const driverRideRequests = document.getElementById("driverRideRequests");
     const driverRideRequestsMessage = document.getElementById("driverRideRequestsMessage");
     const driverAcceptedRideBlock = document.getElementById("driverAcceptedRideBlock");
+    const driverNegotiationTitle = document.getElementById("driverNegotiationTitle");
     const driverAcceptedRideSummary = document.getElementById("driverAcceptedRideSummary");
+    const driverNegotiationMessages = document.getElementById("driverNegotiationMessages");
+    const driverNegotiationActions = document.getElementById("driverNegotiationActions");
+    const driverAcceptFinalBtn = document.getElementById("driverAcceptFinalBtn");
+    const driverNegotiationLauncherBtn = document.getElementById("driverNegotiationLauncherBtn");
+    const driverNegotiationMinimizeBtn = document.getElementById("driverNegotiationMinimizeBtn");
     const driverRideNegotiationForm = document.getElementById("driverRideNegotiationForm");
     const driverRideCounterOffer = document.getElementById("driverRideCounterOffer");
     const driverRideNegotiationMessage = document.getElementById("driverRideNegotiationMessage");
+    const driverStartRidePrompt = document.getElementById("driverStartRidePrompt");
+    const driverStartRideSummary = document.getElementById("driverStartRideSummary");
+    const driverStartRideBtn = document.getElementById("driverStartRideBtn");
+    const driverDismissStartRideBtn = document.getElementById("driverDismissStartRideBtn");
     const driverOnboardingWrap = document.getElementById("driverOnboardingWrap");
     const driverForm = document.getElementById("driverForm");
     const driverMessage = document.getElementById("driverMessage");
     let currentDriverId = "";
     let driverRideRequestPollHandle = null;
     let activeDriverRideRequestId = "";
+    let driverClosedStartPromptRequestId = "";
+    let driverStartedRideRequestId = "";
+
+    function openDriverNegotiationPanel() {
+        driverAcceptedRideBlock.classList.remove("hidden");
+        driverNegotiationLauncherBtn.classList.add("hidden");
+    }
+
+    function minimizeDriverNegotiationPanel() {
+        driverAcceptedRideBlock.classList.add("hidden");
+        if (driverNegotiationMessages.textContent.trim()) {
+            driverNegotiationLauncherBtn.classList.remove("hidden");
+        }
+    }
+
+    function closeDriverNegotiationPanel() {
+        driverAcceptedRideBlock.classList.add("hidden");
+        driverNegotiationLauncherBtn.classList.add("hidden");
+        driverNegotiationActions.classList.add("hidden");
+    }
+
+    function hideDriverStartRidePrompt() {
+        if (!driverStartRidePrompt || !driverStartRideSummary) {
+            return;
+        }
+        driverStartRidePrompt.classList.add("hidden");
+        driverStartRideSummary.textContent = "";
+    }
+
+    function showDriverStartRidePrompt(request) {
+        if (!driverStartRidePrompt || !driverStartRideSummary || !request || !request.requestId || request.requestId === driverClosedStartPromptRequestId || request.requestId === driverStartedRideRequestId) {
+            return;
+        }
+        closeDriverNegotiationPanel();
+        driverStartRideSummary.innerHTML = [
+            `<strong>${request.riderName || "Rider"} is ready for pickup.</strong>`,
+            `Pickup: ${request.source}`,
+            `Drop-off: ${request.destination}`,
+            `Final Fare: ${request.currency || "USD"} ${Number(request.counterOffer || request.estimatedFare || 0).toFixed(2)}`
+        ].join("<br>");
+        driverStartRidePrompt.classList.remove("hidden");
+    }
+
+    driverNegotiationLauncherBtn.addEventListener("click", openDriverNegotiationPanel);
+    driverNegotiationMinimizeBtn.addEventListener("click", minimizeDriverNegotiationPanel);
 
     driverLoginForm.addEventListener("submit", async (event) => {
         event.preventDefault();
@@ -1133,6 +1189,10 @@
         driverRideRequests.innerHTML = "";
         driverRideRequestsMessage.textContent = "Nearby rider requests will appear here after login.";
         driverAcceptedRideBlock.classList.add("hidden");
+        driverNegotiationLauncherBtn.classList.add("hidden");
+        hideDriverStartRidePrompt();
+        driverClosedStartPromptRequestId = "";
+        driverStartedRideRequestId = "";
         driverAcceptedRideSummary.textContent = "";
         driverRideNegotiationForm.reset();
         driverRideNegotiationMessage.textContent = "Accept a ride request to start negotiating with the rider.";
@@ -1150,16 +1210,20 @@
     function renderDriverAcceptedRide(request) {
         if (!request) {
             driverAcceptedRideBlock.classList.add("hidden");
+            driverNegotiationLauncherBtn.classList.add("hidden");
             driverNegotiationTitle.textContent = "Accepted Ride";
             driverAcceptedRideSummary.textContent = "";
             driverNegotiationMessages.innerHTML = "";
             driverNegotiationActions.classList.add("hidden");
             driverRideNegotiationMessage.textContent = "Accept a ride request to start negotiating with the rider.";
+            hideDriverStartRidePrompt();
             return;
         }
 
         activeDriverRideRequestId = request.requestId || "";
-        driverAcceptedRideBlock.classList.remove("hidden");
+        if (!request.driverFinalAcceptance) {
+            openDriverNegotiationPanel();
+        }
         driverNegotiationTitle.textContent = `Negotiate Fare with ${request.riderName || "Rider"}`;
         const summaryLines = [
             `<strong>${request.riderName || "Rider request"}</strong>`,
@@ -1191,10 +1255,21 @@
         driverNegotiationMessages.innerHTML = messageLines.join("");
 
         if (request.counterOffer && request.riderFinalAcceptance && !request.driverFinalAcceptance) {
+            openDriverNegotiationPanel();
             driverNegotiationActions.classList.remove("hidden");
             driverAcceptFinalBtn.textContent = `Confirm Final Offer (${request.currency || "USD"} ${Number(request.counterOffer).toFixed(2)})`;
         } else {
             driverNegotiationActions.classList.add("hidden");
+        }
+        if (request.driverFinalAcceptance) {
+            closeDriverNegotiationPanel();
+            driverRideNegotiationMessage.textContent = "You accepted the final fare.";
+        }
+        if (request.riderFinalAcceptance && request.driverFinalAcceptance) {
+            showDriverStartRidePrompt(request);
+            driverRideRequestsMessage.textContent = `${request.riderName || "Rider"} accepted the final fare. Start to the pickup location when ready.`;
+        } else {
+            hideDriverStartRidePrompt();
         }
     }
 
@@ -1518,11 +1593,32 @@
             driverRideNegotiationMessage.textContent = result.message || "Driver accepted the final fare.";
             driverNegotiationMessages.innerHTML += `<div class="chat-msg"><strong>System:</strong> You accepted the rider's final fare.</div>`;
             driverNegotiationMessages.scrollTop = driverNegotiationMessages.scrollHeight;
+            closeDriverNegotiationPanel();
             await loadDriverRideRequests();
         } catch (error) {
             driverRideNegotiationMessage.textContent = `Accept final fare request failed: ${error}`;
         }
     });
+
+    if (driverStartRideBtn) {
+        driverStartRideBtn.addEventListener("click", () => {
+        if (!activeDriverRideRequestId) {
+            hideDriverStartRidePrompt();
+            return;
+        }
+        driverStartedRideRequestId = activeDriverRideRequestId;
+        hideDriverStartRidePrompt();
+        driverRideRequestsMessage.textContent = "Ride started. Head to the rider pickup location.";
+        });
+    }
+
+    if (driverDismissStartRideBtn) {
+        driverDismissStartRideBtn.addEventListener("click", () => {
+        driverClosedStartPromptRequestId = activeDriverRideRequestId;
+        hideDriverStartRidePrompt();
+        driverRideRequestsMessage.textContent = "Start ride prompt dismissed. The accepted ride remains active.";
+        });
+    }
 </script>
 </body>
 </html>

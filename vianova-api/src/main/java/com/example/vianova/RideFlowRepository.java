@@ -256,8 +256,14 @@ public class RideFlowRepository {
                         UPDATE dbo.ride_requests
                         SET status = 'VOID',
                             updated_at = SYSUTCDATETIME()
-                        WHERE status IN ('PENDING_DRIVER', 'ACCEPTED_BY_DRIVER', 'NEGOTIATING')
-                          AND created_at < DATEADD(MINUTE, -:ttlMinutes, SYSUTCDATETIME())
+                        WHERE (
+                            status = 'PENDING_DRIVER'
+                            AND created_at < DATEADD(MINUTE, -:ttlMinutes, SYSUTCDATETIME())
+                        )
+                        OR (
+                            status IN ('ACCEPTED_BY_DRIVER', 'NEGOTIATING')
+                            AND updated_at < DATEADD(MINUTE, -:ttlMinutes, SYSUTCDATETIME())
+                        )
                         """,
                 new MapSqlParameterSource("ttlMinutes", REQUEST_TTL_MINUTES));
     }
@@ -269,8 +275,16 @@ public class RideFlowRepository {
                             updated_at = SYSUTCDATETIME()
                         WHERE request_id = :requestId
                           AND rider_id = :riderId
-                          AND status IN ('PENDING_DRIVER', 'ACCEPTED_BY_DRIVER', 'NEGOTIATING')
-                          AND created_at < DATEADD(MINUTE, -:ttlMinutes, SYSUTCDATETIME())
+                          AND (
+                              (
+                                  status = 'PENDING_DRIVER'
+                                  AND created_at < DATEADD(MINUTE, -:ttlMinutes, SYSUTCDATETIME())
+                              )
+                              OR (
+                                  status IN ('ACCEPTED_BY_DRIVER', 'NEGOTIATING')
+                                  AND updated_at < DATEADD(MINUTE, -:ttlMinutes, SYSUTCDATETIME())
+                              )
+                          )
                         """,
                 new MapSqlParameterSource()
                         .addValue("requestId", requestId)
@@ -302,15 +316,26 @@ public class RideFlowRepository {
                             ro.last_name
                         FROM dbo.ride_requests rr
                         INNER JOIN dbo.rider_onboarding ro ON ro.rider_id = rr.rider_id
-                        WHERE (rr.status = 'PENDING_DRIVER'
-                           OR rr.assigned_driver_id = :driverId)
-                          AND rr.status <> 'VOID'
+                        WHERE (
+                            (
+                                rr.status = 'PENDING_DRIVER'
+                                AND rr.assigned_driver_id IS NULL
+                                AND rr.created_at >= DATEADD(MINUTE, -:ttlMinutes, SYSUTCDATETIME())
+                            )
+                            OR (
+                                rr.assigned_driver_id = :driverId
+                                AND rr.status IN ('ACCEPTED_BY_DRIVER', 'NEGOTIATING')
+                                AND rr.updated_at >= DATEADD(MINUTE, -:ttlMinutes, SYSUTCDATETIME())
+                            )
+                        )
                         ORDER BY
                             CASE WHEN rr.status = 'PENDING_DRIVER' THEN 0 ELSE 1 END,
                             rr.created_at DESC,
                             rr.updated_at DESC
                         """,
-                new MapSqlParameterSource("driverId", driverId),
+                new MapSqlParameterSource()
+                        .addValue("driverId", driverId)
+                        .addValue("ttlMinutes", REQUEST_TTL_MINUTES),
                 (rs, rowNum) -> new RideRequestRow(
                         UUID.fromString(rs.getString("request_id")),
                         UUID.fromString(rs.getString("rider_id")),
@@ -328,6 +353,47 @@ public class RideFlowRepository {
                         rs.getBoolean("driver_final_acceptance"),
                         rs.getTimestamp("created_at").toLocalDateTime(),
                         rs.getTimestamp("updated_at").toLocalDateTime()
+                ));
+    }
+
+    public List<RiderRideHistoryRow> findRiderRideHistory(UUID riderId, int limit) {
+        return jdbcTemplate.query("""
+                        SELECT TOP (:limit)
+                            rr.request_id,
+                            rr.assigned_driver_id,
+                            d.name AS driver_name,
+                            rr.source,
+                            rr.destination,
+                            rr.departure_time,
+                            rr.estimated_fare,
+                            rr.currency,
+                            rr.status,
+                            rr.rider_offer,
+                            rr.counter_offer,
+                            rr.updated_at,
+                            rr.created_at
+                        FROM dbo.ride_requests rr
+                        LEFT JOIN dbo.driver_onboarding d ON d.driver_id = rr.assigned_driver_id
+                        WHERE rr.rider_id = :riderId
+                        ORDER BY rr.updated_at DESC, rr.created_at DESC
+                        """,
+                new MapSqlParameterSource()
+                        .addValue("riderId", riderId)
+                        .addValue("limit", Math.max(1, Math.min(20, limit))),
+                (rs, rowNum) -> new RiderRideHistoryRow(
+                        UUID.fromString(rs.getString("request_id")),
+                        uuidOrNull(rs.getString("assigned_driver_id")),
+                        rs.getString("driver_name"),
+                        rs.getString("source"),
+                        rs.getString("destination"),
+                        rs.getTimestamp("departure_time").toLocalDateTime(),
+                        rs.getBigDecimal("estimated_fare"),
+                        rs.getString("currency"),
+                        rs.getString("status"),
+                        rs.getBigDecimal("rider_offer"),
+                        rs.getBigDecimal("counter_offer"),
+                        rs.getTimestamp("updated_at").toLocalDateTime(),
+                        rs.getTimestamp("created_at").toLocalDateTime()
                 ));
     }
 
@@ -532,6 +598,23 @@ public class RideFlowRepository {
             boolean driverFinalAcceptance,
             LocalDateTime createdAt,
             LocalDateTime updatedAt
+    ) {
+    }
+
+    public record RiderRideHistoryRow(
+            UUID requestId,
+            UUID assignedDriverId,
+            String driverName,
+            String source,
+            String destination,
+            LocalDateTime departureTime,
+            BigDecimal estimatedFare,
+            String currency,
+            String status,
+            BigDecimal riderOffer,
+            BigDecimal counterOffer,
+            LocalDateTime updatedAt,
+            LocalDateTime createdAt
     ) {
     }
 }

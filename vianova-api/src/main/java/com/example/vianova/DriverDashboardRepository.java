@@ -165,11 +165,18 @@ public class DriverDashboardRepository {
                             ro.last_name
                         FROM dbo.ride_requests rr
                         INNER JOIN dbo.rider_onboarding ro ON ro.rider_id = rr.rider_id
-                        WHERE ((rr.status = 'PENDING_DRIVER'
-                               AND rr.assigned_driver_id IS NULL
-                               AND rr.created_at >= DATEADD(MINUTE, -:ttlMinutes, SYSUTCDATETIME()))
-                           OR rr.assigned_driver_id = :driverId)
-                          AND rr.status <> 'VOID'
+                        WHERE (
+                            (
+                                rr.status = 'PENDING_DRIVER'
+                                AND rr.assigned_driver_id IS NULL
+                                AND rr.created_at >= DATEADD(MINUTE, -:ttlMinutes, SYSUTCDATETIME())
+                            )
+                            OR (
+                                rr.assigned_driver_id = :driverId
+                                AND rr.status IN ('ACCEPTED_BY_DRIVER', 'NEGOTIATING')
+                                AND rr.updated_at >= DATEADD(MINUTE, -:ttlMinutes, SYSUTCDATETIME())
+                            )
+                        )
                         ORDER BY
                             CASE WHEN rr.status = 'PENDING_DRIVER' THEN 0 ELSE 1 END,
                             rr.updated_at DESC,
@@ -201,8 +208,14 @@ public class DriverDashboardRepository {
                         UPDATE dbo.ride_requests
                         SET status = 'VOID',
                             updated_at = SYSUTCDATETIME()
-                        WHERE status IN ('PENDING_DRIVER', 'ACCEPTED_BY_DRIVER', 'NEGOTIATING')
-                          AND created_at < DATEADD(MINUTE, -:ttlMinutes, SYSUTCDATETIME())
+                        WHERE (
+                            status = 'PENDING_DRIVER'
+                            AND created_at < DATEADD(MINUTE, -:ttlMinutes, SYSUTCDATETIME())
+                        )
+                        OR (
+                            status IN ('ACCEPTED_BY_DRIVER', 'NEGOTIATING')
+                            AND updated_at < DATEADD(MINUTE, -:ttlMinutes, SYSUTCDATETIME())
+                        )
                         """,
                 new MapSqlParameterSource("ttlMinutes", REQUEST_TTL_MINUTES));
     }

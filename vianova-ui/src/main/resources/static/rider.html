@@ -95,6 +95,8 @@
     const negotiationForm = document.getElementById("negotiationForm");
     const negotiationFare = document.getElementById("negotiationFare");
     const negotiationActions = document.getElementById("negotiationActions");
+    const negotiationLauncherBtn = document.getElementById("negotiationLauncherBtn");
+    const negotiationMinimizeBtn = document.getElementById("negotiationMinimizeBtn");
     const proposeAgainBtn = document.getElementById("proposeAgainBtn");
     const acceptFinalBtn = document.getElementById("acceptFinalBtn");
     const tripCheckout = document.getElementById("tripCheckout");
@@ -133,6 +135,33 @@
     let driverMarker = null;
 
     let activeRequestId = 0;
+
+    function openNegotiationPanel() {
+        negotiationBlock.classList.remove("hidden");
+        negotiationLauncherBtn.classList.add("hidden");
+    }
+
+    function minimizeNegotiationPanel() {
+        negotiationBlock.classList.add("hidden");
+        if (negotiationMessages.textContent.trim()) {
+            negotiationLauncherBtn.classList.remove("hidden");
+        }
+    }
+
+    function closeNegotiationPanel() {
+        negotiationBlock.classList.add("hidden");
+        negotiationLauncherBtn.classList.add("hidden");
+        negotiationActions.classList.add("hidden");
+    }
+
+    function hideEstimateComparisonPanels() {
+        riderOptionsBlock.classList.add("hidden");
+        riderOptions.innerHTML = "";
+        drivers.innerHTML = "";
+    }
+
+    negotiationLauncherBtn.addEventListener("click", openNegotiationPanel);
+    negotiationMinimizeBtn.addEventListener("click", minimizeNegotiationPanel);
 
     riderLoginForm.addEventListener("submit", async (event) => {
         event.preventDefault();
@@ -298,6 +327,7 @@
         estimate.classList.add("hidden");
         riderOptionsBlock.classList.add("hidden");
         negotiationBlock.classList.add("hidden");
+        negotiationLauncherBtn.classList.add("hidden");
         negotiationActions.classList.add("hidden");
         negotiationMessages.innerHTML = "";
         negotiationFare.value = "";
@@ -542,6 +572,159 @@
         });
     });
 
+    function resetEstimateFlow(payload) {
+        riderForm.classList.remove("hidden");
+        riderHint.classList.remove("hidden");
+        estimate.classList.remove("hidden");
+        estimate.textContent = "Fetching estimate...";
+        drivers.innerHTML = "";
+        riderOptionsBlock.classList.add("hidden");
+        riderOptions.innerHTML = "";
+        negotiationBlock.classList.add("hidden");
+        negotiationLauncherBtn.classList.add("hidden");
+        negotiationActions.classList.add("hidden");
+        negotiationMessages.innerHTML = "";
+        negotiationFare.value = "";
+        selectedNegotiationDriver = null;
+        selectedNegotiationDriverId = null;
+        negotiatedFare = null;
+        stopRiderRideRequestPolling();
+        currentRideRequestId = "";
+        lastSeenRiderOffer = "";
+        lastSeenDriverCounterOffer = "";
+        currentRideRequest = payload;
+        resetTripCheckout();
+    }
+
+    async function shareRideRequestWithDrivers(payload, data) {
+        if (!currentRiderId) {
+            return;
+        }
+        try {
+            const rideRequestResponse = await fetch("/api/rides/requests", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    riderId: currentRiderId,
+                    source: payload.source,
+                    destination: payload.destination,
+                    departureTime: payload.departureTime,
+                    estimatedFare: data.estimatedFare,
+                    currency: data.currency
+                })
+            });
+            const rideRequestBody = await rideRequestResponse.text();
+            if (rideRequestResponse.ok) {
+                const rideRequest = JSON.parse(rideRequestBody);
+                currentRideRequestId = rideRequest.requestId || "";
+                lastSeenRiderOffer = "";
+                lastSeenDriverCounterOffer = "";
+                riderHint.textContent = rideRequest.message || "Ride request shared with nearby drivers.";
+                startRiderRideRequestPolling();
+            } else {
+                riderHint.textContent = `Ride request was not shared with drivers: ${rideRequestBody}`;
+            }
+        } catch (error) {
+            riderHint.textContent = `Ride request dispatch failed: ${error}`;
+        }
+    }
+
+    async function renderRideEstimate(data, options) {
+        const shouldShareRideRequest = !options || options.shareRideRequest !== false;
+        const payload = {
+            source: data.source || "",
+            destination: data.destination || "",
+            departureTime: data.departureTime || document.getElementById("departureTime").value
+        };
+        sourceInput.value = payload.source;
+        destinationInput.value = payload.destination;
+        if (payload.departureTime) {
+            document.getElementById("departureTime").value = payload.departureTime;
+        }
+        currentRideRequest = payload;
+
+        estimate.innerHTML = `
+            <strong>Trip:</strong> ${data.source} -> ${data.destination}<br>
+            <strong>Departure:</strong> ${data.departureTime}<br>
+            <strong>ETA:</strong> ${data.estimatedTimeMinutes} mins<br>
+            <strong>Estimated Fare:</strong> ${data.currency} ${data.estimatedFare}
+        `;
+        const rideOptions = deriveRideOptions(data);
+        riderOptionsBlock.classList.remove("hidden");
+        riderOptions.innerHTML = rideOptions.map((option) => `
+            <article class="option-card">
+                <strong>${option.provider}</strong><br>
+                Car: ${option.car}<br>
+                Driver: ${option.driver}<br>
+                ETA: ${option.etaMinutes} mins<br>
+                Fare: ${data.currency} ${option.fare}
+            </article>
+        `).join("");
+
+        if (shouldShareRideRequest) {
+            await shareRideRequestWithDrivers(payload, data);
+        }
+
+        drivers.innerHTML = (data.availableDrivers || []).map(driver => `
+            <article class="driver-card">
+                <strong>${driver.name}</strong>
+                <div>${driver.vehicle}</div>
+                <div>Arrives in ${driver.etaMinutes} mins</div>
+                <div>Rating ${driver.rating}</div>
+                <button class="secondary negotiate-btn" data-driver-id="${driver.driverId}" data-driver="${driver.name}" style="margin-top:8px;">Negotiate Fare</button>
+            </article>
+        `).join("");
+
+        document.querySelectorAll(".negotiate-btn").forEach((btn) => {
+            btn.addEventListener("click", () => {
+                selectedNegotiationDriver = btn.getAttribute("data-driver");
+                selectedNegotiationDriverId = btn.getAttribute("data-driver-id");
+                negotiatedFare = null;
+                negotiationTitle.textContent = `Negotiate Fare with ${selectedNegotiationDriver}`;
+                negotiationMessages.innerHTML = `<div class="chat-msg"><strong>System:</strong> Start by sending your offer to ${selectedNegotiationDriver}.</div>`;
+                openNegotiationPanel();
+                negotiationActions.classList.add("hidden");
+            });
+        });
+    }
+
+    window.addEventListener("vianova-chat-ride-estimate", async (event) => {
+        const data = event.detail || {};
+        const payload = {
+            source: data.source || "",
+            destination: data.destination || "",
+            departureTime: data.departureTime || document.getElementById("departureTime").value
+        };
+        resetEstimateFlow(payload);
+        await renderRideEstimate(data);
+    });
+
+    window.VianovaRiderChatBridge = {
+        prefillRideRequest: function prefillRideRequest(source, destination, departureTime) {
+            if (!sourceInput || !destinationInput || !riderForm) {
+                return false;
+            }
+            sourceInput.value = source || "";
+            destinationInput.value = destination || "";
+            if (departureTime && document.getElementById("departureTime")) {
+                document.getElementById("departureTime").value = departureTime;
+            }
+            riderForm.classList.remove("hidden");
+            riderHint.classList.remove("hidden");
+            estimate.classList.remove("hidden");
+            sourceInput.dispatchEvent(new Event("input", { bubbles: true }));
+            destinationInput.dispatchEvent(new Event("input", { bubbles: true }));
+            return true;
+        },
+        submitRideEstimate: function submitRideEstimate() {
+            if (!riderForm) {
+                return false;
+            }
+            riderForm.requestSubmit();
+            return true;
+        }
+    };
+
     riderForm.addEventListener("submit", async (event) => {
         event.preventDefault();
 
@@ -551,19 +734,7 @@
             departureTime: document.getElementById("departureTime").value
         };
 
-        estimate.textContent = "Fetching estimate...";
-        drivers.innerHTML = "";
-        riderOptionsBlock.classList.add("hidden");
-        riderOptions.innerHTML = "";
-        negotiationBlock.classList.add("hidden");
-        negotiationActions.classList.add("hidden");
-        negotiationMessages.innerHTML = "";
-        negotiationFare.value = "";
-        selectedNegotiationDriver = null;
-        selectedNegotiationDriverId = null;
-        negotiatedFare = null;
-        currentRideRequest = payload;
-        resetTripCheckout();
+        resetEstimateFlow(payload);
 
         try {
             const response = await fetch("/api/rides/estimate", {
@@ -578,76 +749,7 @@
                 return;
             }
 
-            const data = JSON.parse(bodyText);
-            estimate.innerHTML = `
-                <strong>Trip:</strong> ${data.source} -> ${data.destination}<br>
-                <strong>Departure:</strong> ${data.departureTime}<br>
-                <strong>ETA:</strong> ${data.estimatedTimeMinutes} mins<br>
-                <strong>Estimated Fare:</strong> ${data.currency} ${data.estimatedFare}
-            `;
-            const options = deriveRideOptions(data);
-            riderOptionsBlock.classList.remove("hidden");
-            riderOptions.innerHTML = options.map((option) => `
-                <article class="option-card">
-                    <strong>${option.provider}</strong><br>
-                    Car: ${option.car}<br>
-                    Driver: ${option.driver}<br>
-                    ETA: ${option.etaMinutes} mins<br>
-                    Fare: ${data.currency} ${option.fare}
-                </article>
-            `).join("");
-
-            if (currentRiderId) {
-                try {
-                    const rideRequestResponse = await fetch("/api/rides/requests", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            riderId: currentRiderId,
-                            source: payload.source,
-                            destination: payload.destination,
-                            departureTime: payload.departureTime,
-                            estimatedFare: data.estimatedFare,
-                            currency: data.currency
-                        })
-                    });
-                    const rideRequestBody = await rideRequestResponse.text();
-                    if (rideRequestResponse.ok) {
-                        const rideRequest = JSON.parse(rideRequestBody);
-                        currentRideRequestId = rideRequest.requestId || "";
-                        lastSeenRiderOffer = "";
-                        lastSeenDriverCounterOffer = "";
-                        riderHint.textContent = rideRequest.message || "Ride request shared with nearby drivers.";
-                        startRiderRideRequestPolling();
-                    } else {
-                        riderHint.textContent = `Ride request was not shared with drivers: ${rideRequestBody}`;
-                    }
-                } catch (error) {
-                    riderHint.textContent = `Ride request dispatch failed: ${error}`;
-                }
-            }
-
-            drivers.innerHTML = (data.availableDrivers || []).map(driver => `
-                <article class="driver-card">
-                    <strong>${driver.name}</strong>
-                    <div>${driver.vehicle}</div>
-                    <div>Arrives in ${driver.etaMinutes} mins</div>
-                    <div>Rating ${driver.rating}</div>
-                    <button class="secondary negotiate-btn" data-driver-id="${driver.driverId}" data-driver="${driver.name}" style="margin-top:8px;">Negotiate Fare</button>
-                </article>
-            `).join("");
-
-            document.querySelectorAll(".negotiate-btn").forEach((btn) => {
-                btn.addEventListener("click", () => {
-                    selectedNegotiationDriver = btn.getAttribute("data-driver");
-                    selectedNegotiationDriverId = btn.getAttribute("data-driver-id");
-                    negotiatedFare = null;
-                    negotiationTitle.textContent = `Negotiate Fare with ${selectedNegotiationDriver}`;
-                    negotiationMessages.innerHTML = `<div class="chat-msg"><strong>System:</strong> Start by sending your offer to ${selectedNegotiationDriver}.</div>`;
-                    negotiationBlock.classList.remove("hidden");
-                    negotiationActions.classList.add("hidden");
-                });
-            });
+            await renderRideEstimate(JSON.parse(bodyText));
         } catch (error) {
             estimate.textContent = `Request failed: ${error}`;
         }
@@ -757,6 +859,7 @@
                 currentRideRequestId = "";
                 riderHint.textContent = result.message || "No drivers are available right now. Please try again.";
                 negotiationBlock.classList.add("hidden");
+                negotiationLauncherBtn.classList.add("hidden");
                 negotiationActions.classList.add("hidden");
                 return null;
             }
@@ -790,7 +893,9 @@
                 negotiatedFare = counterOffer;
                 lastSeenDriverCounterOffer = counterOfferKey;
                 negotiationTitle.textContent = `Negotiate Fare with ${selectedNegotiationDriver}`;
-                negotiationBlock.classList.remove("hidden");
+                if (!request.riderFinalAcceptance && !request.driverFinalAcceptance) {
+                    openNegotiationPanel();
+                }
                 negotiationMessages.innerHTML += `<div class="chat-msg"><strong>${selectedNegotiationDriver}:</strong> Sent a counter offer of ${request.currency || "USD"} ${counterOffer.toFixed(2)}.</div>`;
                 negotiationMessages.scrollTop = negotiationMessages.scrollHeight;
                 acceptFinalBtn.textContent = `Accept Final Price (USD ${negotiatedFare.toFixed(2)})`;
@@ -801,21 +906,25 @@
                 selectedNegotiationDriverId = request.assignedDriverId || selectedNegotiationDriverId;
                 negotiatedFare = counterOffer;
                 negotiationTitle.textContent = `Negotiate Fare with ${selectedNegotiationDriver}`;
-                negotiationBlock.classList.remove("hidden");
                 acceptFinalBtn.textContent = `Accept Final Price (USD ${negotiatedFare.toFixed(2)})`;
                 if (!request.riderFinalAcceptance && !request.driverFinalAcceptance) {
+                    negotiationBlock.classList.remove("hidden");
+                    negotiationLauncherBtn.classList.add("hidden");
                     negotiationActions.classList.remove("hidden");
                     riderHint.textContent = `${selectedNegotiationDriver} sent a counter offer. You can accept it or propose again.`;
                 } else {
-                    negotiationActions.classList.add("hidden");
+                    closeNegotiationPanel();
                 }
             } else {
                 negotiationActions.classList.add("hidden");
             }
             if (request.riderFinalAcceptance && !request.driverFinalAcceptance) {
+                closeNegotiationPanel();
                 riderHint.textContent = "You accepted the final fare. Waiting for driver acceptance.";
             }
             if (request.riderFinalAcceptance && request.driverFinalAcceptance && counterOffer != null) {
+                closeNegotiationPanel();
+                hideEstimateComparisonPanels();
                 negotiatedFare = counterOffer;
                 selectedNegotiationDriver = request.driverName || selectedNegotiationDriver || "Driver";
                 selectedNegotiationDriverId = request.assignedDriverId || selectedNegotiationDriverId;
@@ -854,6 +963,7 @@
             const result = JSON.parse(body);
             negotiationMessages.innerHTML += `<div class="chat-msg"><strong>System:</strong> ${result.message} Waiting for driver acceptance.</div>`;
             negotiationMessages.scrollTop = negotiationMessages.scrollHeight;
+            closeNegotiationPanel();
             riderHint.textContent = "You accepted the final fare. Waiting for driver acceptance.";
             await loadRiderRideRequestStatus();
         } catch (error) {
@@ -1131,32 +1241,6 @@
     const now = new Date(Date.now() + 15 * 60000);
     dtInput.value = now.toISOString().slice(0, 16);
 
-    window.VianovaRiderChatBridge = {
-        prefillRideRequest: function prefillRideRequest(source, destination, departureTime) {
-            if (!sourceInput || !destinationInput || !riderForm) {
-                return false;
-            }
-            sourceInput.value = source || "";
-            destinationInput.value = destination || "";
-            if (departureTime && dtInput) {
-                dtInput.value = departureTime;
-            }
-            riderForm.classList.remove("hidden");
-            riderHint.classList.remove("hidden");
-            estimate.classList.remove("hidden");
-            sourceInput.dispatchEvent(new Event("input", { bubbles: true }));
-            destinationInput.dispatchEvent(new Event("input", { bubbles: true }));
-            return true;
-        },
-        submitRideEstimate: function submitRideEstimate() {
-            if (!riderForm) {
-                return false;
-            }
-            riderForm.requestSubmit();
-            return true;
-        }
-    };
-
     const driverLoginForm = document.getElementById("driverLoginForm");
     const driverLoginMessage = document.getElementById("driverLoginMessage");
     const driverAuthCard = document.getElementById("driverAuthCard");
@@ -1174,6 +1258,8 @@
     const driverRideRequests = document.getElementById("driverRideRequests");
     const driverRideRequestsMessage = document.getElementById("driverRideRequestsMessage");
     const driverAcceptedRideBlock = document.getElementById("driverAcceptedRideBlock");
+    const driverNegotiationLauncherBtn = document.getElementById("driverNegotiationLauncherBtn");
+    const driverNegotiationMinimizeBtn = document.getElementById("driverNegotiationMinimizeBtn");
     const driverNegotiationTitle = document.getElementById("driverNegotiationTitle");
     const driverAcceptedRideSummary = document.getElementById("driverAcceptedRideSummary");
     const driverNegotiationMessages = document.getElementById("driverNegotiationMessages");
@@ -1182,14 +1268,66 @@
     const driverRideNegotiationForm = document.getElementById("driverRideNegotiationForm");
     const driverRideCounterOffer = document.getElementById("driverRideCounterOffer");
     const driverRideNegotiationMessage = document.getElementById("driverRideNegotiationMessage");
+    const driverStartRidePrompt = document.getElementById("driverStartRidePrompt");
+    const driverStartRideSummary = document.getElementById("driverStartRideSummary");
+    const driverStartRideBtn = document.getElementById("driverStartRideBtn");
+    const driverDismissStartRideBtn = document.getElementById("driverDismissStartRideBtn");
     const driverOnboardingWrap = document.getElementById("driverOnboardingWrap");
     const driverForm = document.getElementById("driverForm");
     const driverMessage = document.getElementById("driverMessage");
     let currentDriverId = "";
     let driverRideRequestPollHandle = null;
     let activeDriverRideRequestId = "";
+    let driverClosedStartPromptRequestId = "";
+    let driverStartedRideRequestId = "";
 
-    driverLoginForm.addEventListener("submit", async (event) => {
+    function openDriverNegotiationPanel() {
+        driverAcceptedRideBlock.classList.remove("hidden");
+        driverNegotiationLauncherBtn.classList.add("hidden");
+    }
+
+    function minimizeDriverNegotiationPanel() {
+        driverAcceptedRideBlock.classList.add("hidden");
+        if (driverNegotiationMessages.textContent.trim()) {
+            driverNegotiationLauncherBtn.classList.remove("hidden");
+        }
+    }
+
+    function closeDriverNegotiationPanel() {
+        driverAcceptedRideBlock.classList.add("hidden");
+        driverNegotiationLauncherBtn.classList.add("hidden");
+        driverNegotiationActions.classList.add("hidden");
+    }
+
+    function hideDriverStartRidePrompt() {
+        if (!driverStartRidePrompt || !driverStartRideSummary) {
+            return;
+        }
+        driverStartRidePrompt.classList.add("hidden");
+        driverStartRideSummary.textContent = "";
+    }
+
+    function showDriverStartRidePrompt(request) {
+        if (!driverStartRidePrompt || !driverStartRideSummary || !request || !request.requestId || request.requestId === driverClosedStartPromptRequestId || request.requestId === driverStartedRideRequestId) {
+            return;
+        }
+        closeDriverNegotiationPanel();
+        driverStartRideSummary.innerHTML = [
+            `<strong>${request.riderName || "Rider"} is ready for pickup.</strong>`,
+            `Pickup: ${request.source}`,
+            `Drop-off: ${request.destination}`,
+            `Final Fare: ${request.currency || "USD"} ${Number(request.counterOffer || request.estimatedFare || 0).toFixed(2)}`
+        ].join("<br>");
+        driverStartRidePrompt.classList.remove("hidden");
+    }
+
+    if (driverNegotiationLauncherBtn && driverNegotiationMinimizeBtn) {
+        driverNegotiationLauncherBtn.addEventListener("click", openDriverNegotiationPanel);
+        driverNegotiationMinimizeBtn.addEventListener("click", minimizeDriverNegotiationPanel);
+    }
+
+    if (driverLoginForm) {
+        driverLoginForm.addEventListener("submit", async (event) => {
         event.preventDefault();
         const payload = {
             emailOrId: document.getElementById("driverLoginId").value.trim(),
@@ -1256,9 +1394,11 @@
         } catch (error) {
             driverLoginMessage.textContent = `Login request failed: ${error}`;
         }
-    });
+        });
+    }
 
-    driverLogoutBtn.addEventListener("click", async () => {
+    if (driverLogoutBtn) {
+        driverLogoutBtn.addEventListener("click", async () => {
         if (currentDriverId) {
             try {
                 await fetch("/api/auth/driver/logout", {
@@ -1285,6 +1425,10 @@
         driverRideRequests.innerHTML = "";
         driverRideRequestsMessage.textContent = "Nearby rider requests will appear here after login.";
         driverAcceptedRideBlock.classList.add("hidden");
+        driverNegotiationLauncherBtn.classList.add("hidden");
+        hideDriverStartRidePrompt();
+        driverClosedStartPromptRequestId = "";
+        driverStartedRideRequestId = "";
         driverNegotiationTitle.textContent = "Accepted Ride";
         driverAcceptedRideSummary.textContent = "";
         driverNegotiationMessages.innerHTML = "";
@@ -1300,21 +1444,26 @@
         driverCarMessage.textContent = "Existing cars are shown above.";
         driverMessage.textContent = "Fill the form and upload scanned license copy.";
         showOnboardingBtn.textContent = "New user? Start onboarding";
-    });
+        });
+    }
 
     function renderDriverAcceptedRide(request) {
         if (!request) {
             driverAcceptedRideBlock.classList.add("hidden");
+            driverNegotiationLauncherBtn.classList.add("hidden");
             driverNegotiationTitle.textContent = "Accepted Ride";
             driverAcceptedRideSummary.textContent = "";
             driverNegotiationMessages.innerHTML = "";
             driverNegotiationActions.classList.add("hidden");
             driverRideNegotiationMessage.textContent = "Accept a ride request to start negotiating with the rider.";
+            hideDriverStartRidePrompt();
             return;
         }
 
         activeDriverRideRequestId = request.requestId || "";
-        driverAcceptedRideBlock.classList.remove("hidden");
+        if (!request.driverFinalAcceptance) {
+            openDriverNegotiationPanel();
+        }
         driverNegotiationTitle.textContent = `Negotiate Fare with ${request.riderName || "Rider"}`;
         const summaryLines = [
             `<strong>${request.riderName || "Rider request"}</strong>`,
@@ -1345,10 +1494,21 @@
         }
         driverNegotiationMessages.innerHTML = messageLines.join("");
         if (request.counterOffer && request.riderFinalAcceptance && !request.driverFinalAcceptance) {
+            openDriverNegotiationPanel();
             driverNegotiationActions.classList.remove("hidden");
             driverAcceptFinalBtn.textContent = `Confirm Final Offer (${request.currency || "USD"} ${Number(request.counterOffer).toFixed(2)})`;
         } else {
             driverNegotiationActions.classList.add("hidden");
+        }
+        if (request.driverFinalAcceptance) {
+            closeDriverNegotiationPanel();
+            driverRideNegotiationMessage.textContent = "You accepted the final fare.";
+        }
+        if (request.riderFinalAcceptance && request.driverFinalAcceptance) {
+            showDriverStartRidePrompt(request);
+            driverRideRequestsMessage.textContent = `${request.riderName || "Rider"} accepted the final fare. Start to the pickup location when ready.`;
+        } else {
+            hideDriverStartRidePrompt();
         }
     }
 
@@ -1490,14 +1650,17 @@
         });
     }
 
-    showOnboardingBtn.addEventListener("click", () => {
-        driverOnboardingWrap.classList.toggle("hidden");
-        showOnboardingBtn.textContent = driverOnboardingWrap.classList.contains("hidden")
-            ? "New user? Start onboarding"
-            : "Hide onboarding";
-    });
+    if (showOnboardingBtn) {
+        showOnboardingBtn.addEventListener("click", () => {
+            driverOnboardingWrap.classList.toggle("hidden");
+            showOnboardingBtn.textContent = driverOnboardingWrap.classList.contains("hidden")
+                ? "New user? Start onboarding"
+                : "Hide onboarding";
+        });
+    }
 
-    driverForm.addEventListener("submit", async (event) => {
+    if (driverForm) {
+        driverForm.addEventListener("submit", async (event) => {
         event.preventDefault();
 
         const documentInput = document.getElementById("driverLicenseDocument");
@@ -1536,9 +1699,11 @@
         } catch (error) {
             driverMessage.textContent = `Request failed: ${error}`;
         }
-    });
+        });
+    }
 
-    driverContactForm.addEventListener("submit", async (event) => {
+    if (driverContactForm) {
+        driverContactForm.addEventListener("submit", async (event) => {
         event.preventDefault();
         if (!currentDriverId) {
             driverContactMessage.textContent = "Please login as driver first.";
@@ -1569,9 +1734,11 @@
         } catch (error) {
             driverContactMessage.textContent = `Update request failed: ${error}`;
         }
-    });
+        });
+    }
 
-    driverCarForm.addEventListener("submit", async (event) => {
+    if (driverCarForm) {
+        driverCarForm.addEventListener("submit", async (event) => {
         event.preventDefault();
         if (!currentDriverId) {
             driverCarMessage.textContent = "Please login as driver first.";
@@ -1605,9 +1772,11 @@
         } catch (error) {
             driverCarMessage.textContent = `Add car request failed: ${error}`;
         }
-    });
+        });
+    }
 
-    driverRideNegotiationForm.addEventListener("submit", async (event) => {
+    if (driverRideNegotiationForm) {
+        driverRideNegotiationForm.addEventListener("submit", async (event) => {
         event.preventDefault();
         if (!currentDriverId || !activeDriverRideRequestId) {
             driverRideNegotiationMessage.textContent = "Accept a ride request before sending a counter offer.";
@@ -1647,9 +1816,11 @@
         } catch (error) {
             driverRideNegotiationMessage.textContent = `Counter offer request failed: ${error}`;
         }
-    });
+        });
+    }
 
-    driverAcceptFinalBtn.addEventListener("click", async () => {
+    if (driverAcceptFinalBtn) {
+        driverAcceptFinalBtn.addEventListener("click", async () => {
         if (!currentDriverId || !activeDriverRideRequestId) {
             driverRideNegotiationMessage.textContent = "Accept a ride request before accepting the final fare.";
             return;
@@ -1674,11 +1845,33 @@
             driverRideNegotiationMessage.textContent = result.message || "Driver accepted the final fare.";
             driverNegotiationMessages.innerHTML += `<div class="chat-msg"><strong>System:</strong> You accepted the rider's final fare.</div>`;
             driverNegotiationMessages.scrollTop = driverNegotiationMessages.scrollHeight;
+            closeDriverNegotiationPanel();
             await loadDriverRideRequests();
         } catch (error) {
             driverRideNegotiationMessage.textContent = `Accept final fare request failed: ${error}`;
         }
-    });
+        });
+    }
+
+    if (driverStartRideBtn) {
+        driverStartRideBtn.addEventListener("click", () => {
+            if (!activeDriverRideRequestId) {
+                hideDriverStartRidePrompt();
+                return;
+            }
+            driverStartedRideRequestId = activeDriverRideRequestId;
+            hideDriverStartRidePrompt();
+            driverRideRequestsMessage.textContent = "Ride started. Head to the rider pickup location.";
+        });
+    }
+
+    if (driverDismissStartRideBtn) {
+        driverDismissStartRideBtn.addEventListener("click", () => {
+            driverClosedStartPromptRequestId = activeDriverRideRequestId;
+            hideDriverStartRidePrompt();
+            driverRideRequestsMessage.textContent = "Start ride prompt dismissed. The accepted ride remains active.";
+        });
+    }
 </script>
 </body>
 </html>

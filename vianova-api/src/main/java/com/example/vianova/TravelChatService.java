@@ -2,6 +2,8 @@ package com.example.vianova;
 
 import com.example.vianova.ChatbotController.ChatbotRequest;
 import com.example.vianova.ChatbotController.ChatbotResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
@@ -18,9 +20,11 @@ import java.util.regex.Pattern;
 @Service
 public class TravelChatService {
 
+    private static final Logger log = LoggerFactory.getLogger(TravelChatService.class);
+
     private static final Pattern NUMBER_PATTERN = Pattern.compile("\\b(\\d{1,2})\\b");
     private static final Pattern TRIP_ID_PATTERN = Pattern.compile("\\b(TRIP-[A-Z0-9-]+)\\b", Pattern.CASE_INSENSITIVE);
-    private static final Pattern BOOK_RIDE_PATTERN = Pattern.compile("\\b(?:book|schedule|get|find|reserve)\\b.*?\\b(?:ride|cab|trip)\\b.*?\\bfrom\\b\\s+(.+?)\\s+\\bto\\b\\s+(.+?)(?:\\s+\\b(?:at|for|on)\\b\\s+(.+))?$", Pattern.CASE_INSENSITIVE);
+    private static final Pattern RIDE_ESTIMATE_PATTERN = Pattern.compile("\\b(?:book|schedule|get|find|estimate|show|need|want)\\b.*?\\b(?:ride|cab|trip|fare|estimate|option|options)\\b.*?\\bfrom\\b\\s+(.+?)\\s+\\bto\\b\\s+(.+?)(?:\\s+\\b(?:at|for|on)\\b\\s+(.+))?$", Pattern.CASE_INSENSITIVE);
 
     private final DriverDashboardController driverDashboardController;
     private final RiderProfileController riderProfileController;
@@ -45,11 +49,17 @@ public class TravelChatService {
                 request == null || request.page() == null ? "" : request.page().trim().toLowerCase()
         );
 
+        log.info("Chatbot request received: userType={}, page={}, hasUserId={}, messageLength={}",
+                safeRequest.userType(), safeRequest.page(), !safeRequest.userId().isBlank(), safeRequest.message().length());
+
         ChatbotReply llmReply = openAiToolCallingService.chatWithTools(safeRequest, this);
         if (llmReply != null) {
+            log.info("Chatbot response selected: source={}, intent={}", llmReply.source(), llmReply.intent());
             return toResponse(llmReply);
         }
-        return toResponse(deterministicReply(safeRequest));
+        ChatbotReply fallbackReply = deterministicReply(safeRequest);
+        log.info("Chatbot response selected: source={}, intent={}", fallbackReply.source(), fallbackReply.intent());
+        return toResponse(fallbackReply);
     }
 
     public ChatbotReply deterministicReply(ChatbotRequest request) {
@@ -64,8 +74,8 @@ public class TravelChatService {
         }
 
         String normalizedMessage = message.toLowerCase();
-        if (isRideBookingIntent(normalizedMessage)) {
-            return handleRideBooking(message, request.userType(), request.userId());
+        if (isRideEstimateIntent(normalizedMessage)) {
+            return handleRideEstimate(message);
         }
         if (isTripTrackingIntent(normalizedMessage)) {
             return handleTripTracking(message);
@@ -95,15 +105,20 @@ public class TravelChatService {
     }
 
     public String executeTool(String toolName, Map<String, Object> arguments, ChatbotRequest request) {
+        return stringifyBody(executeToolPayload(toolName, arguments, request));
+    }
+
+    public Map<String, Object> executeToolPayload(String toolName, Map<String, Object> arguments, ChatbotRequest request) {
         return switch (toolName) {
-            case "get_driver_rides" -> stringifyBody(executeDriverRides(arguments, request));
-            case "get_rider_saved_cards" -> stringifyBody(executeSavedCards(request));
-            case "get_rider_payment_options" -> stringifyBody(executePayments(request));
-            case "get_driver_cars" -> stringifyBody(executeCars(request));
-            case "get_driver_ratings" -> stringifyBody(executeRatings(request));
-            case "get_trip_status" -> stringifyBody(executeTripStatus(arguments));
-            case "book_rider_ride" -> stringifyBody(executeBookRide(arguments, request));
-            default -> stringifyBody(Map.of("status", "error", "message", "Unsupported tool: " + toolName));
+            case "get_driver_rides" -> executeDriverRides(arguments, request);
+            case "get_rider_rides" -> executeRiderRides(arguments, request);
+            case "get_rider_saved_cards" -> executeSavedCards(request);
+            case "get_rider_payment_options" -> executePayments(request);
+            case "get_driver_cars" -> executeCars(request);
+            case "get_driver_ratings" -> executeRatings(request);
+            case "get_trip_status" -> executeTripStatus(arguments);
+            case "get_ride_estimate" -> executeRideEstimate(arguments);
+            default -> Map.of("status", "error", "message", "Unsupported tool: " + toolName);
         };
     }
 
@@ -120,6 +135,23 @@ public class TravelChatService {
         List<?> rides = listValue(body.get("rides"));
         List<?> sliced = rides.subList(0, Math.min(limit, rides.size()));
         return Map.of("status", "ok", "count", sliced.size(), "rides", sliced);
+    }
+
+    private Map<String, Object> executeRiderRides(Map<String, Object> arguments, ChatbotRequest request) {
+        if (!"RIDER".equals(request.userType()) || !isValidUuid(request.userId())) {
+            return Map.of("status", "error", "message", "Rider login is required");
+        }
+        int limit = arguments.get("limit") instanceof Number number ? Math.max(1, Math.min(20, number.intValue())) : 5;
+        ResponseEntity<?> response = riderProfileController.getRides(request.userId(), limit);
+        if (!response.getStatusCode().is2xxSuccessful()) {
+            return Map.of("status", "error", "message", stringifyBody(response.getBody()));
+        }
+        Map<?, ?> body = bodyAsMap(response.getBody());
+        return Map.of(
+                "status", "ok",
+                "count", body.get("count") == null ? 0 : body.get("count"),
+                "rides", listValue(body.get("rides"))
+        );
     }
 
     private Map<String, Object> executeSavedCards(ChatbotRequest request) {
@@ -178,10 +210,7 @@ public class TravelChatService {
         return Map.of("status", "ok", "trip", bodyAsMap(response.getBody()));
     }
 
-    private Map<String, Object> executeBookRide(Map<String, Object> arguments, ChatbotRequest request) {
-        if (!"RIDER".equals(request.userType()) || request.userId().isBlank()) {
-            return Map.of("status", "error", "message", "Rider login is required");
-        }
+    private Map<String, Object> executeRideEstimate(Map<String, Object> arguments) {
         String source = stringValue(arguments.get("source")).trim();
         String destination = stringValue(arguments.get("destination")).trim();
         String departureTime = normalizeDepartureTime(stringValue(arguments.get("departureTime")).trim());
@@ -190,40 +219,76 @@ public class TravelChatService {
             return Map.of("status", "error", "message", "source and destination are required");
         }
 
-        ChatbotReply reply = bookRide(source, destination, departureTime, request.userId());
-        return Map.of(
-                "status", "ok",
-                "intent", reply.intent(),
-                "response", reply.response()
+        ResponseEntity<?> response = rideEstimateController.estimateRide(
+                new RideEstimateController.RideEstimateRequest(source, destination, departureTime)
+        );
+        if (!response.getStatusCode().is2xxSuccessful()) {
+            return Map.of("status", "error", "message", stringifyBody(response.getBody()));
+        }
+        Object body = response.getBody();
+        if (!(body instanceof RideEstimateController.RideEstimateResponse estimate)) {
+            return Map.of("status", "error", "message", "Unexpected ride estimate response");
+        }
+        return rideEstimateMap(estimate);
+    }
+
+    private ChatbotReply handleRideEstimate(String message) {
+        ParsedRideEstimate parsed = parseRideEstimate(message);
+        if (parsed == null || parsed.source().isBlank() || parsed.destination().isBlank()) {
+            return new ChatbotReply(
+                    "Tell me the pickup and drop-off in this format: 'book a ride from JFK Airport to Times Square'.",
+                    "deterministic-router",
+                    "ride_estimate_missing_locations",
+                    List.of("book a ride from JFK Airport to Times Square", "estimate ride from Downtown to Airport")
+            );
+        }
+
+        Map<String, Object> result = executeRideEstimate(Map.of(
+                "source", parsed.source(),
+                "destination", parsed.destination(),
+                "departureTime", parsed.departureTime()
+        ));
+        if (!"ok".equals(result.get("status"))) {
+            return new ChatbotReply(
+                    "Unable to get ride estimates: " + stringValue(result.get("message")),
+                    "deterministic-router",
+                    "ride_estimate_error",
+                    defaultSuggestions()
+            );
+        }
+        return new ChatbotReply(
+                formatRideEstimate(result),
+                "deterministic-router",
+                "ride_estimate",
+                List.of("show my payment options", "show my saved cards"),
+                Map.of("rideEstimate", result)
         );
     }
 
-    private ChatbotReply handleRideBooking(String message, String userType, String userId) {
-        if (!"RIDER".equals(userType) || userId.isBlank()) {
-            return new ChatbotReply(
-                    "Please log in as a rider first so I can book the ride for your account.",
-                    "deterministic-router",
-                    "ride_booking_login_required",
-                    List.of("Log in as rider, then ask 'book me a ride from Downtown to Airport'.")
-            );
-        }
-
-        ParsedRideRequest parsed = parseRideRequest(message);
-        if (parsed == null || parsed.source().isBlank() || parsed.destination().isBlank()) {
-            return new ChatbotReply(
-                    "Tell me the pickup and drop-off in this format: 'book me a ride from Downtown to Airport'. You can optionally add an ISO time like 'at 2026-04-10T20:15'.",
-                    "deterministic-router",
-                    "ride_booking_missing_locations",
-                    List.of("book me a ride from Downtown to Airport", "book a ride from 123 Main St to DFW at 2026-04-10T20:15")
-            );
-        }
-
-        return bookRide(parsed.source(), parsed.destination(), parsed.departureTime(), userId);
-    }
-
     private ChatbotReply handleRideHistory(String message, String userType, String userId) {
+        if ("RIDER".equals(userType)) {
+            if (!isValidUuid(userId)) {
+                return loginRequired("Please log in as a rider first so I can fetch your rides.");
+            }
+            ResponseEntity<?> response = riderProfileController.getRides(userId, parseRequestedCount(message));
+            if (!response.getStatusCode().is2xxSuccessful()) {
+                return errorReply("rider_ride_history_error", response);
+            }
+            Map<?, ?> body = bodyAsMap(response.getBody());
+            List<?> rides = listValue(body.get("rides"));
+            if (rides.isEmpty()) {
+                return new ChatbotReply("I found no rides for this rider account yet.", "deterministic-router", "rider_ride_history_empty", List.of("show my payment options", "show my saved cards"));
+            }
+            List<String> lines = new ArrayList<>();
+            lines.add("Your last " + rides.size() + " rider rides:");
+            for (int index = 0; index < rides.size(); index++) {
+                Map<?, ?> ride = bodyAsMap(rides.get(index));
+                lines.add((index + 1) + ". " + stringValue(ride.get("requestId")) + " | " + stringValue(ride.get("source")) + " -> " + stringValue(ride.get("destination")) + " | " + stringValue(ride.get("status")) + " | " + stringValue(ride.get("currency")) + " " + stringValue(ride.get("finalFare")) + " | " + stringValue(ride.get("departureTime")));
+            }
+            return new ChatbotReply(String.join("\n", lines), "deterministic-router", "rider_ride_history", List.of("show my saved cards", "show my payment options"));
+        }
         if (!"DRIVER".equals(userType)) {
-            return new ChatbotReply("Ride history is currently linked for logged-in drivers. The current backend does not expose rider ride history yet.", "deterministic-router", "ride_history_unavailable", List.of("Log in as a driver and ask 'show my last 10 rides'.", "Ask for trip tracking with a trip ID."));
+            return loginRequired("Please log in first so I can fetch your ride history.");
         }
         if (!isValidUuid(userId)) {
             return loginRequired("Please log in as a driver first so I can fetch your rides.");
@@ -363,55 +428,6 @@ public class TravelChatService {
         return new ChatbotReply("Trip " + stringValue(body.get("tripId")) + " is " + stringValue(body.get("status")) + " with driver " + stringValue(body.get("driverName")) + ". ETA: " + stringValue(body.get("etaMinutes")) + " minutes.", "deterministic-router", "trip_tracking", List.of("Ask for another trip status.", "Ask 'show my payment options'."));
     }
 
-    private ChatbotReply bookRide(String source, String destination, String departureTime, String riderId) {
-        String resolvedDeparture = normalizeDepartureTime(departureTime);
-        ResponseEntity<?> estimateResponse = rideEstimateController.estimateRide(
-                new RideEstimateController.RideEstimateRequest(source, destination, resolvedDeparture)
-        );
-        if (!estimateResponse.getStatusCode().is2xxSuccessful()) {
-            return errorReply("ride_booking_estimate_error", estimateResponse);
-        }
-
-        RideEstimateController.RideEstimateResponse estimate = (RideEstimateController.RideEstimateResponse) estimateResponse.getBody();
-        if (estimate == null || estimate.availableDrivers().isEmpty()) {
-            return new ChatbotReply(
-                    "I could not find an available driver for that route right now.",
-                    "deterministic-router",
-                    "ride_booking_no_drivers",
-                    List.of("Try another pickup time.", "Try another source or destination.")
-            );
-        }
-
-        RideEstimateController.AvailableDriver driver = estimate.availableDrivers().get(0);
-        ResponseEntity<?> requestResponse = rideEstimateController.createRideRequest(
-                new RideEstimateController.CreateRideRequest(
-                        riderId,
-                        source,
-                        destination,
-                        resolvedDeparture,
-                        estimate.estimatedFare(),
-                        estimate.currency()
-                )
-        );
-        if (!requestResponse.getStatusCode().is2xxSuccessful()) {
-            return errorReply("ride_booking_request_error", requestResponse);
-        }
-
-        Map<?, ?> body = bodyAsMap(requestResponse.getBody());
-        return new ChatbotReply(
-                "Ride request created from " + source + " to " + destination
-                        + ". Suggested driver: " + driver.name()
-                        + " (" + driver.vehicle() + ")"
-                        + ". Fare: USD " + estimate.estimatedFare()
-                        + ". ETA: " + estimate.estimatedTimeMinutes() + " minutes."
-                        + " Request ID: " + stringValue(body.get("requestId"))
-                        + (usedDefaultDeparture(departureTime) ? ". Pickup time defaulted to 15 minutes from now." : ""),
-                "deterministic-router",
-                "ride_booking_success",
-                List.of("show my payment options", "show my saved cards")
-        );
-    }
-
     private ChatbotReply loginRequired(String response) {
         return new ChatbotReply(response, "deterministic-router", "login_required", defaultSuggestions());
     }
@@ -421,7 +437,7 @@ public class TravelChatService {
     }
 
     private ChatbotResponse toResponse(ChatbotReply reply) {
-        return new ChatbotResponse(reply.response(), reply.source(), Instant.now().toString(), reply.suggestions(), reply.intent());
+        return new ChatbotResponse(reply.response(), reply.source(), Instant.now().toString(), reply.suggestions(), reply.intent(), reply.payload());
     }
 
     private int parseRequestedCount(String message) {
@@ -441,17 +457,16 @@ public class TravelChatService {
         return false;
     }
 
-    private boolean isRideBookingIntent(String value) {
-        return containsAny(value, "book", "schedule", "reserve")
-                && containsAny(value, "ride", "cab", "trip")
-                && value.contains("from")
-                && value.contains("to");
-    }
-
     private boolean isRideHistoryIntent(String value) {
         boolean mentionsRide = containsAny(value, "ride", "rides", "trip", "trips", "history", "past rides", "recent rides", "ride history", "trip history");
         boolean asksForList = containsAny(value, "last", "previous", "recent", "show", "give", "list", "fetch", "get");
         return mentionsRide && asksForList;
+    }
+
+    private boolean isRideEstimateIntent(String value) {
+        return containsAny(value, "book", "schedule", "estimate", "fare", "ride option", "ride options", "need a ride", "want a ride")
+                && value.contains("from")
+                && value.contains("to");
     }
 
     private boolean isSavedCardsIntent(String value) {
@@ -479,8 +494,8 @@ public class TravelChatService {
                 "track", "tracking", "trip status", "ride status", "where is trip", "where is my ride", "status of trip", "status of ride");
     }
 
-    private ParsedRideRequest parseRideRequest(String message) {
-        Matcher matcher = BOOK_RIDE_PATTERN.matcher(message.trim());
+    private ParsedRideEstimate parseRideEstimate(String message) {
+        Matcher matcher = RIDE_ESTIMATE_PATTERN.matcher(message.trim());
         if (!matcher.find()) {
             return null;
         }
@@ -488,7 +503,7 @@ public class TravelChatService {
         String source = matcher.group(1) == null ? "" : matcher.group(1).trim();
         String destination = matcher.group(2) == null ? "" : matcher.group(2).trim();
         String departureTime = matcher.group(3) == null ? "" : matcher.group(3).trim();
-        return new ParsedRideRequest(source, destination, normalizeDepartureTime(departureTime));
+        return new ParsedRideEstimate(source, destination, normalizeDepartureTime(departureTime));
     }
 
     private String normalizeDepartureTime(String rawValue) {
@@ -509,44 +524,49 @@ public class TravelChatService {
         }
     }
 
-    private boolean usedDefaultDeparture(String rawValue) {
-        if (rawValue == null || rawValue.isBlank()) {
-            return true;
-        }
-        String value = rawValue.trim();
-        if ("now".equalsIgnoreCase(value)) {
-            return false;
-        }
-        try {
-            LocalDateTime.parse(value);
-            return false;
-        } catch (DateTimeParseException ex) {
-            return true;
-        }
+    private Map<String, Object> rideEstimateMap(RideEstimateController.RideEstimateResponse estimate) {
+        return Map.of(
+                "status", "ok",
+                "source", estimate.source(),
+                "destination", estimate.destination(),
+                "departureTime", estimate.departureTime(),
+                "estimatedTimeMinutes", estimate.estimatedTimeMinutes(),
+                "estimatedFare", estimate.estimatedFare(),
+                "currency", estimate.currency(),
+                "modelVersion", estimate.modelVersion(),
+                "fallbackUsed", estimate.fallbackUsed(),
+                "availableDrivers", estimate.availableDrivers().stream()
+                        .map(driver -> Map.of(
+                                "driverId", driver.driverId(),
+                                "name", driver.name(),
+                                "vehicle", driver.vehicle(),
+                                "etaMinutes", driver.etaMinutes(),
+                                "rating", driver.rating()
+                        ))
+                        .toList()
+        );
     }
 
-    private String resolvePaymentOption(String riderId) {
-        ResponseEntity<?> cardsResponse = riderProfileController.getSavedCards(riderId);
-        if (cardsResponse.getStatusCode().is2xxSuccessful()) {
-            List<?> cards = listValue(bodyAsMap(cardsResponse.getBody()).get("savedCards"));
-            if (!cards.isEmpty()) {
-                Map<?, ?> firstCard = bodyAsMap(cards.get(0));
-                return "CARD-****" + stringValue(firstCard.get("last4"));
-            }
+    private String formatRideEstimate(Map<String, Object> result) {
+        List<String> lines = new ArrayList<>();
+        String currency = stringValue(result.get("currency")).isBlank() ? "USD" : stringValue(result.get("currency"));
+        lines.add("Ride estimate from " + stringValue(result.get("source")) + " to " + stringValue(result.get("destination")) + ":");
+        lines.add("- ETA: " + stringValue(result.get("estimatedTimeMinutes")) + " minutes");
+        lines.add("- Estimated fare: " + currency + " " + stringValue(result.get("estimatedFare")));
+        List<?> drivers = listValue(result.get("availableDrivers"));
+        if (drivers.isEmpty()) {
+            lines.add("No available drivers were returned for this estimate.");
+            return String.join("\n", lines);
         }
-
-        ResponseEntity<?> profileResponse = riderProfileController.getProfile(riderId);
-        if (profileResponse.getStatusCode().is2xxSuccessful()) {
-            List<?> payments = listValue(bodyAsMap(profileResponse.getBody()).get("paymentOptions"));
-            if (!payments.isEmpty()) {
-                Map<?, ?> firstPayment = bodyAsMap(payments.get(0));
-                return stringValue(firstPayment.get("details")).isBlank()
-                        ? stringValue(firstPayment.get("type"))
-                        : stringValue(firstPayment.get("type")) + " - " + stringValue(firstPayment.get("details"));
-            }
+        lines.add("Available rides:");
+        for (Object driverObj : drivers) {
+            Map<?, ?> driver = bodyAsMap(driverObj);
+            lines.add("- " + stringValue(driver.get("name"))
+                    + " | " + stringValue(driver.get("vehicle"))
+                    + " | ETA " + stringValue(driver.get("etaMinutes")) + " min"
+                    + " | rating " + stringValue(driver.get("rating")));
         }
-
-        return "Cash";
+        return String.join("\n", lines);
     }
 
     private boolean isValidUuid(String value) {
@@ -584,12 +604,15 @@ public class TravelChatService {
     }
 
     private List<String> defaultSuggestions() {
-        return List.of("book me a ride from Downtown to Airport", "show my saved cards", "show my payment options", "track trip TRIP-1234ABCD");
+        return List.of("show my saved cards", "show my payment options", "track trip TRIP-1234ABCD", "show my last 5 rides");
     }
 
-    public record ChatbotReply(String response, String source, String intent, List<String> suggestions) {
+    public record ChatbotReply(String response, String source, String intent, List<String> suggestions, Map<String, Object> payload) {
+        public ChatbotReply(String response, String source, String intent, List<String> suggestions) {
+            this(response, source, intent, suggestions, Map.of());
+        }
     }
 
-    private record ParsedRideRequest(String source, String destination, String departureTime) {
+    private record ParsedRideEstimate(String source, String destination, String departureTime) {
     }
 }

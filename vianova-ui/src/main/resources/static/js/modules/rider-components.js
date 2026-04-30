@@ -121,21 +121,35 @@
 
     function FareNegotiationPanel() {
         return h(
-            "div",
-            { id: "negotiationBlock", className: "chat-block hidden" },
-            h("h4", { id: "negotiationTitle" }, "Negotiate Fare"),
-            h("div", { id: "negotiationMessages", className: "chat-messages" }),
+            ReactRef.Fragment,
+            null,
             h(
-                "form",
-                { id: "negotiationForm", className: "chat-form" },
-                h("input", { id: "negotiationFare", type: "number", step: "0.1", min: "1", placeholder: "Propose fare (USD)", required: true }),
-                h("button", { className: "secondary", type: "submit" }, "Send Offer")
+                "button",
+                { id: "negotiationLauncherBtn", className: "secondary negotiation-launcher hidden", type: "button" },
+                "Open Fare Chat"
             ),
             h(
                 "div",
-                { id: "negotiationActions", className: "chat-actions hidden" },
-                h("button", { id: "proposeAgainBtn", className: "secondary", type: "button" }, "Propose New Price"),
-                h("button", { id: "acceptFinalBtn", className: "primary", type: "button" }, "Accept Final Price")
+                { id: "negotiationBlock", className: "chat-block negotiation-panel rider-negotiation-panel hidden" },
+                h(
+                    "div",
+                    { className: "negotiation-panel-header" },
+                    h("h4", { id: "negotiationTitle", className: "negotiation-panel-title" }, "Negotiate Fare"),
+                    h("button", { id: "negotiationMinimizeBtn", className: "secondary", type: "button" }, "Minimize")
+                ),
+                h("div", { id: "negotiationMessages", className: "chat-messages" }),
+                h(
+                    "form",
+                    { id: "negotiationForm", className: "chat-form" },
+                    h("input", { id: "negotiationFare", type: "number", step: "0.1", min: "1", placeholder: "Propose fare (USD)", required: true }),
+                    h("button", { className: "secondary", type: "submit" }, "Send Offer")
+                ),
+                h(
+                    "div",
+                    { id: "negotiationActions", className: "chat-actions hidden" },
+                    h("button", { id: "proposeAgainBtn", className: "secondary", type: "button" }, "Propose New Price"),
+                    h("button", { id: "acceptFinalBtn", className: "primary", type: "button" }, "Accept Final Price")
+                )
             )
         );
     }

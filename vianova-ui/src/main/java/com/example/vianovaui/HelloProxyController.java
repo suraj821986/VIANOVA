@@ -1,6 +1,8 @@
 package com.example.vianovaui;
 
 import jakarta.servlet.http.HttpServletRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -17,9 +19,15 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @RestController
 public class HelloProxyController {
+
+    private static final Logger log = LoggerFactory.getLogger(HelloProxyController.class);
+    private static final Pattern USER_TYPE_PATTERN = Pattern.compile("\"userType\"\\s*:\\s*\"([^\"]*)\"");
+    private static final Pattern USER_ID_PATTERN = Pattern.compile("\"userId\"\\s*:\\s*\"([^\"]*)\"");
 
     private final HttpClient httpClient = HttpClient.newHttpClient();
 
@@ -110,6 +118,8 @@ public class HelloProxyController {
 
     @PostMapping(value = "/api/chatbot/message", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<String> chatbotMessage(@RequestBody String payload) {
+        log.info("UI chatbot proxy received request; forwarding to Vianova API /chatbot/message, userType={}, hasUserId={}, payloadLength={}",
+                extractJsonString(payload, USER_TYPE_PATTERN), !extractJsonString(payload, USER_ID_PATTERN).isBlank(), payload.length());
         return forwardJson("/chatbot/message", payload);
     }
 
@@ -187,6 +197,27 @@ public class HelloProxyController {
                     : backendBaseUrl;
             String encodedRiderId = URLEncoder.encode(riderId, StandardCharsets.UTF_8);
             URI uri = URI.create(base + "/riders/cards?riderId=" + encodedRiderId);
+
+            HttpRequest request = HttpRequest.newBuilder(uri).GET().build();
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            return ResponseEntity.status(response.statusCode()).body(response.body());
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                    .body(errorJson(ex));
+        }
+    }
+
+    @GetMapping(value = "/api/riders/rides", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<String> riderRides(
+            @RequestParam String riderId,
+            @RequestParam(defaultValue = "5") int limit
+    ) {
+        try {
+            String base = backendBaseUrl.endsWith("/")
+                    ? backendBaseUrl.substring(0, backendBaseUrl.length() - 1)
+                    : backendBaseUrl;
+            String encodedRiderId = URLEncoder.encode(riderId, StandardCharsets.UTF_8);
+            URI uri = URI.create(base + "/riders/rides?riderId=" + encodedRiderId + "&limit=" + Math.max(1, Math.min(20, limit)));
 
             HttpRequest request = HttpRequest.newBuilder(uri).GET().build();
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
@@ -395,5 +426,13 @@ public class HelloProxyController {
             return message;
         }
         return ex.getClass().getSimpleName();
+    }
+
+    private String extractJsonString(String payload, Pattern pattern) {
+        if (payload == null || payload.isBlank()) {
+            return "";
+        }
+        Matcher matcher = pattern.matcher(payload);
+        return matcher.find() ? matcher.group(1) : "";
     }
 }

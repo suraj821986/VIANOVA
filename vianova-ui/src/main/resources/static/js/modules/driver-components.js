@@ -42,9 +42,19 @@
             h("div", { id: "driverRideRequestsMessage", className: "hint" }, "Nearby rider requests will appear here after login."),
             h("div", { id: "driverRideRequests", className: "rides-list" }),
             h(
+                "button",
+                { id: "driverNegotiationLauncherBtn", className: "secondary negotiation-launcher hidden", type: "button" },
+                "Open Fare Chat"
+            ),
+            h(
                 "div",
-                { id: "driverAcceptedRideBlock", className: "chat-block hidden" },
-                h("h4", { id: "driverNegotiationTitle" }, "Accepted Ride"),
+                { id: "driverAcceptedRideBlock", className: "chat-block negotiation-panel driver-negotiation-panel hidden" },
+                h(
+                    "div",
+                    { className: "negotiation-panel-header" },
+                    h("h4", { id: "driverNegotiationTitle", className: "negotiation-panel-title" }, "Accepted Ride"),
+                    h("button", { id: "driverNegotiationMinimizeBtn", className: "secondary", type: "button" }, "Minimize")
+                ),
                 h("div", { id: "driverAcceptedRideSummary", className: "list-item" }),
                 h("div", { id: "driverNegotiationMessages", className: "rides-list" }),
                 h(
@@ -59,6 +69,22 @@
                     h("button", { className: "secondary", type: "submit" }, "Send Counter Offer")
                 ),
                 h("div", { id: "driverRideNegotiationMessage", className: "hint" }, "Accept a ride request to start negotiating with the rider.")
+            ),
+            h(
+                "div",
+                { id: "driverStartRidePrompt", className: "driver-start-ride-prompt hidden" },
+                h(
+                    "div",
+                    { className: "driver-start-ride-header" },
+                    h("h4", null, "Start Ride"),
+                    h("button", { id: "driverDismissStartRideBtn", className: "secondary", type: "button" }, "Dismiss")
+                ),
+                h("div", { id: "driverStartRideSummary", className: "list-item" }),
+                h(
+                    "div",
+                    { className: "section-actions" },
+                    h("button", { id: "driverStartRideBtn", className: "primary", type: "button" }, "Start To Pickup")
+                )
             )
         );
     }

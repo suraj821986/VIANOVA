@@ -4,6 +4,8 @@ import com.example.vianova.ChatbotController.ChatbotRequest;
 import com.example.vianova.TravelChatService.ChatbotReply;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -21,6 +23,8 @@ import java.util.Map;
 @Service
 public class OpenAiToolCallingService {
 
+    private static final Logger log = LoggerFactory.getLogger(OpenAiToolCallingService.class);
+
     private final HttpClient httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(20)).build();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -35,44 +39,68 @@ public class OpenAiToolCallingService {
 
     public ChatbotReply chatWithTools(ChatbotRequest request, TravelChatService toolExecutor) {
         if (apiKey == null || apiKey.isBlank()) {
+            log.info("OpenAI integration skipped for chatbot request: openai.api.key is not configured");
             return null;
         }
 
         try {
+            log.info("OpenAI integration enabled for chatbot request: model={}, baseUrl={}, userType={}, page={}, messageLength={}",
+                    model, baseUrl, request.userType(), request.page(), request.message().length());
+
             List<Map<String, Object>> messages = new ArrayList<>();
             messages.add(Map.of("role", "system", "content", systemPrompt()));
+            messages.add(Map.of("role", "system", "content", sessionContextPrompt(request)));
             messages.add(Map.of("role", "user", "content", request.message()));
 
+            log.info("OpenAI chat completion request started: phase=tool-selection, model={}", model);
             Map<String, Object> firstResponse = sendChatCompletion(messages, buildTools());
             Map<String, Object> assistantMessage = firstChoiceMessage(firstResponse);
             List<Map<String, Object>> toolCalls = toolCalls(assistantMessage);
+            log.info("OpenAI chat completion response received: phase=tool-selection, toolCallCount={}", toolCalls.size());
 
             if (toolCalls.isEmpty()) {
                 String content = stringValue(assistantMessage.get("content"));
+                if (looksLikeRideEstimateRequest(request.message())) {
+                    log.warn("OpenAI returned a direct response for ride estimate request; falling back to deterministic router");
+                    return null;
+                }
                 if (!content.isBlank()) {
+                    log.info("OpenAI integration completed: responseType=direct, contentLength={}", content.length());
                     return new ChatbotReply(content, "openai-tool-calling", "llm_direct_response", defaultSuggestions());
                 }
+                log.warn("OpenAI integration returned no tool calls and empty content; falling back to deterministic router");
                 return null;
             }
 
             messages.add(assistantMessage);
+            Map<String, Object> responsePayload = Map.of();
             for (Map<String, Object> toolCall : toolCalls) {
                 Map<?, ?> function = mapValue(toolCall.get("function"));
                 String toolName = stringValue(function.get("name"));
                 Map<String, Object> arguments = parseArguments(stringValue(function.get("arguments")));
-                String toolOutput = toolExecutor.executeTool(toolName, arguments, request);
+                log.info("OpenAI requested Vianova tool: name={}, argumentKeys={}", toolName, arguments.keySet());
+                Map<String, Object> toolResult = toolExecutor.executeToolPayload(toolName, arguments, request);
+                String toolOutput = String.valueOf(toolResult);
+                if ("get_ride_estimate".equals(toolName) && "ok".equals(toolResult.get("status"))) {
+                    responsePayload = Map.of("rideEstimate", toolResult);
+                }
+                log.info("Vianova tool completed for OpenAI: name={}, outputLength={}", toolName, toolOutput.length());
                 messages.add(Map.of("role", "tool", "tool_call_id", stringValue(toolCall.get("id")), "content", toolOutput));
             }
 
+            log.info("OpenAI chat completion request started: phase=final-response, model={}", model);
             Map<String, Object> secondResponse = sendChatCompletion(messages, buildTools());
             Map<String, Object> finalMessage = firstChoiceMessage(secondResponse);
             String finalContent = stringValue(finalMessage.get("content"));
             if (finalContent.isBlank()) {
+                log.warn("OpenAI integration returned empty final content; falling back to deterministic router");
                 return null;
             }
 
-            return new ChatbotReply(finalContent, "openai-tool-calling", "llm_tool_response", defaultSuggestions());
-        } catch (Exception ignored) {
+            log.info("OpenAI integration completed: responseType=tool_response, contentLength={}", finalContent.length());
+            return new ChatbotReply(finalContent, "openai-tool-calling", "llm_tool_response", defaultSuggestions(), responsePayload);
+        } catch (Exception ex) {
+            log.warn("OpenAI integration failed; falling back to deterministic router: {}", ex.getMessage());
             return null;
         }
     }
@@ -106,16 +134,21 @@ public class OpenAiToolCallingService {
                         "properties", Map.of("limit", Map.of("type", "integer", "description", "How many rides to return, up to 20.")),
                         "required", List.of("limit")
                 )),
+                functionTool("get_rider_rides", "Fetch recent ride history for the logged-in rider.", Map.of(
+                        "type", "object",
+                        "properties", Map.of("limit", Map.of("type", "integer", "description", "How many rider rides to return, up to 20.")),
+                        "required", List.of("limit")
+                )),
                 functionTool("get_rider_saved_cards", "Fetch saved cards for the logged-in rider.", Map.of("type", "object", "properties", Map.of())),
                 functionTool("get_rider_payment_options", "Fetch payment options for the logged-in rider.", Map.of("type", "object", "properties", Map.of())),
                 functionTool("get_driver_cars", "Fetch registered cars for the logged-in driver.", Map.of("type", "object", "properties", Map.of())),
                 functionTool("get_driver_ratings", "Fetch ratings and strengths for the logged-in driver.", Map.of("type", "object", "properties", Map.of())),
-                functionTool("book_rider_ride", "Book a ride for the logged-in rider using source, destination, and optionally departureTime in ISO local datetime format.", Map.of(
+                functionTool("get_ride_estimate", "Get ride estimate and available ride/driver options using the existing /rides/estimate endpoint. Use this for booking-style or fare/ETA requests with source and destination; this estimates options only and does not create a ride request.", Map.of(
                         "type", "object",
                         "properties", Map.of(
-                                "source", Map.of("type", "string", "description", "Ride pickup location."),
-                                "destination", Map.of("type", "string", "description", "Ride drop-off location."),
-                                "departureTime", Map.of("type", "string", "description", "Optional ISO local datetime like 2026-04-10T20:15.")
+                                "source", Map.of("type", "string", "description", "Pickup location selected or typed by the user."),
+                                "destination", Map.of("type", "string", "description", "Drop-off location selected or typed by the user."),
+                                "departureTime", Map.of("type", "string", "description", "Optional ISO local datetime like 2026-04-30T20:15. Use now/asap only if the user asks for it.")
                         ),
                         "required", List.of("source", "destination")
                 )),
@@ -176,13 +209,46 @@ public class OpenAiToolCallingService {
                 You are a travel app assistant for Vianova.
                 Use tools whenever the user asks for account-specific or trip-specific data.
                 Prefer tools over guessing.
-                If the required user context is missing, explain that login is required.
+                If the current session says the required user is logged in, do not ask them to log in again; call the relevant tool.
+                If the current session says the required user is not logged in, explain that login is required.
+                When the user asks to book, schedule, find, estimate, or get a ride from one place to another, call get_ride_estimate. Do not say you cannot book rides; return the estimate and available ride options from the tool.
+                get_ride_estimate does not finalize or create a ride request; it only returns /rides/estimate results.
                 Keep answers concise and directly useful.
-                Supported tool domains: rider ride booking, driver rides, rider saved cards, rider payment options, driver cars, driver ratings, and trip status.
+                Supported tool domains: ride estimates, rider ride history, driver rides, rider saved cards, rider payment options, driver cars, driver ratings, and trip status.
                 """;
     }
 
+    private String sessionContextPrompt(ChatbotRequest request) {
+        boolean loggedIn = request.userId() != null && !request.userId().isBlank();
+        String userType = request.userType() == null || request.userType().isBlank() ? "NONE" : request.userType();
+        String page = request.page() == null || request.page().isBlank() ? "unknown" : request.page();
+
+        return """
+                Current Vianova session context:
+                - page: %s
+                - userType: %s
+                - loggedIn: %s
+
+                Tool guidance:
+                - For "saved cards", call get_rider_saved_cards when userType is RIDER and loggedIn is true.
+                - For "payment options", call get_rider_payment_options when userType is RIDER and loggedIn is true.
+                - For "my rides", "last rides", or ride history, call get_rider_rides when userType is RIDER and loggedIn is true.
+                - For "my cars", call get_driver_cars when userType is DRIVER and loggedIn is true.
+                - For "my ratings", call get_driver_ratings when userType is DRIVER and loggedIn is true.
+                - For "my rides" or ride history, call get_driver_rides when userType is DRIVER and loggedIn is true.
+                - For trip tracking, call get_trip_status when a trip ID is provided.
+                - For booking-style messages such as "book a ride from JFK Airport to Times Square" or "estimate fare from X to Y", call get_ride_estimate. This tool does not require login because it only returns estimates and ride options.
+                """.formatted(page, userType, loggedIn);
+    }
+
     private List<String> defaultSuggestions() {
-        return List.of("book me a ride from Downtown to Airport", "show my saved cards", "show my payment options", "track trip TRIP-1234ABCD");
+        return List.of("book a ride from JFK Airport to Times Square", "show my saved cards", "show my payment options", "track trip TRIP-1234ABCD");
+    }
+
+    private boolean looksLikeRideEstimateRequest(String value) {
+        String text = value == null ? "" : value.toLowerCase();
+        return (text.contains("book") || text.contains("schedule") || text.contains("estimate") || text.contains("fare") || text.contains("ride"))
+                && text.contains("from")
+                && text.contains("to");
     }
 }
