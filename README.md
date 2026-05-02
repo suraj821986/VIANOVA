@@ -52,12 +52,12 @@ Note: the app also has SQL init enabled, but run these once manually first to en
 Optional LLM tool-calling configuration:
 
 ```properties
-openai.api.key=YOUR_OPENAI_API_KEY
+openai.api.key=${OPENAI_API_KEY:}
 openai.base-url=https://api.openai.com/v1
 openai.chat.model=gpt-4.1-mini
 ```
 
-Without `openai.api.key`, the chatbot falls back to the local deterministic intent router.
+Set `OPENAI_API_KEY` in your local environment to enable OpenAI tool-calling. Without it, the chatbot falls back to the local deterministic intent router.
 
 From project root:
 

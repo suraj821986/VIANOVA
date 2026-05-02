@@ -173,10 +173,14 @@
             { id: "tripCheckout", className: "checkout-page hidden" },
             h("h4", null, "Finalize Trip"),
             h("div", { id: "tripCheckoutSummary" }),
-            h("h4", null, "Save Card For Future Use"),
+            h(
+                "button",
+                { id: "toggleTripSaveCardBtn", className: "secondary trip-save-card-toggle", type: "button", "aria-expanded": "false" },
+                "Save Card For Future Use"
+            ),
             h(
                 "form",
-                { id: "tripSaveCardForm", className: "checkout-form" },
+                { id: "tripSaveCardForm", className: "checkout-form trip-card-form hidden" },
                 h("input", { id: "tripCardHolderName", placeholder: "Card holder name", required: true }),
                 h("input", { id: "tripCardNumber", placeholder: "Card number", inputMode: "numeric", required: true }),
                 h("input", { id: "tripCardExpiryMonth", type: "number", min: "1", max: "12", placeholder: "MM", required: true }),
@@ -185,10 +189,10 @@
             ),
             h(
                 "form",
-                { id: "tripCheckoutForm", className: "checkout-form" },
+                { id: "tripCheckoutForm", className: "checkout-form trip-payment-form" },
                 h(
                     "select",
-                    { id: "tripPaymentOption", required: true },
+                    { id: "tripPaymentOption", className: "trip-payment-select", required: true },
                     h("option", { value: "" }, "Select payment option")
                 ),
                 h("button", { className: "primary", type: "submit" }, "Finalize Trip")

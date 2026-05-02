@@ -101,6 +101,7 @@
     const acceptFinalBtn = document.getElementById("acceptFinalBtn");
     const tripCheckout = document.getElementById("tripCheckout");
     const tripCheckoutSummary = document.getElementById("tripCheckoutSummary");
+    const toggleTripSaveCardBtn = document.getElementById("toggleTripSaveCardBtn");
     const tripSaveCardForm = document.getElementById("tripSaveCardForm");
     const tripCheckoutForm = document.getElementById("tripCheckoutForm");
     const tripPaymentOption = document.getElementById("tripPaymentOption");
@@ -162,6 +163,13 @@
 
     negotiationLauncherBtn.addEventListener("click", openNegotiationPanel);
     negotiationMinimizeBtn.addEventListener("click", minimizeNegotiationPanel);
+
+    toggleTripSaveCardBtn.addEventListener("click", () => {
+        const isOpening = tripSaveCardForm.classList.contains("hidden");
+        tripSaveCardForm.classList.toggle("hidden", !isOpening);
+        toggleTripSaveCardBtn.setAttribute("aria-expanded", String(isOpening));
+        toggleTripSaveCardBtn.textContent = isOpening ? "Hide Save Card" : "Save Card For Future Use";
+    });
 
     riderLoginForm.addEventListener("submit", async (event) => {
         event.preventDefault();

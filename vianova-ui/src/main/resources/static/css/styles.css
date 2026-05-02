@@ -425,6 +425,71 @@ p {
     margin-top: var(--space-md);
 }
 
+.checkout-page {
+    display: grid;
+    gap: var(--space-md);
+    max-width: 72rem;
+}
+
+.checkout-page h4 {
+    margin-bottom: 0;
+}
+
+#tripCheckoutSummary {
+    color: var(--text);
+    font-size: var(--text-base);
+    line-height: var(--line-body);
+}
+
+.trip-card-form {
+    grid-template-columns: minmax(0, 2fr) minmax(14rem, 1fr);
+    gap: var(--space-sm);
+}
+
+.trip-save-card-toggle {
+    justify-self: start;
+    min-height: 2.8rem;
+    padding-inline: 1rem;
+    border-color: rgba(143, 178, 214, 0.24);
+}
+
+.trip-card-form button {
+    grid-column: 1 / -1;
+    justify-self: stretch;
+}
+
+.trip-payment-form {
+    display: grid;
+    grid-template-columns: minmax(16rem, 1fr) auto;
+    align-items: center;
+    gap: var(--space-sm);
+    margin-top: var(--space-xs);
+    padding-top: var(--space-md);
+    border-top: 1px solid rgba(143, 178, 214, 0.18);
+}
+
+.trip-payment-select {
+    min-height: 3.25rem;
+    padding-right: 3rem;
+    border-radius: var(--radius-md);
+    border-color: rgba(91, 255, 204, 0.28);
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.04)),
+        rgba(21, 34, 52, 0.96);
+    color: var(--text);
+    cursor: pointer;
+}
+
+.trip-payment-select:hover {
+    border-color: rgba(91, 255, 204, 0.42);
+}
+
+.trip-payment-form .primary {
+    min-height: 3.25rem;
+    padding-inline: 1.45rem;
+    white-space: nowrap;
+}
+
 .source-field,
 .destination-field,
 .driver-full,
@@ -1061,6 +1126,15 @@ select option {
     .chat-form,
     .checkout-form {
         grid-template-columns: 1fr;
+    }
+
+    .trip-card-form,
+    .trip-payment-form {
+        grid-template-columns: 1fr;
+    }
+
+    .trip-payment-form .primary {
+        width: 100%;
     }
 
     .chatbot-footer {
