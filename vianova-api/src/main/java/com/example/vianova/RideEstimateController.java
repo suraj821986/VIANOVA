@@ -83,6 +83,62 @@ public class RideEstimateController {
         return ResponseEntity.ok(response);
     }
 
+    @PostMapping("/accuracy-check")
+    public ResponseEntity<?> accuracyCheck(@RequestBody AccuracyCheckRequest request) {
+        if (request == null
+                || request.tripDistance() < 0
+                || isBlank(request.pickupLocationId())
+                || isBlank(request.dropoffLocationId())
+                || isBlank(request.pickupDateTime())) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("tripDistance, pickupLocationId, dropoffLocationId and pickupDateTime are required");
+        }
+
+        LocalDateTime pickupDateTime;
+        try {
+            pickupDateTime = LocalDateTime.parse(request.pickupDateTime());
+        } catch (DateTimeParseException ex) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("pickupDateTime must be ISO local date-time, for example 2025-10-01T00:15:32");
+        }
+
+        RideMlEstimatorService.FeatureEstimateResult prediction = rideMlEstimatorService.estimateFeatures(
+                request.tripDistance(),
+                request.pickupLocationId(),
+                request.dropoffLocationId(),
+                pickupDateTime
+        );
+
+        double etaErrorSeconds = prediction.etaSeconds() - request.actualDurationSeconds();
+        double fareError = prediction.fare() - request.actualFare();
+        double totalError = prediction.totalNoTip() - request.actualTotalNoTip();
+
+        return ResponseEntity.ok(new AccuracyCheckResponse(
+                request.sampleId(),
+                request.sourceLabel(),
+                request.destinationLabel(),
+                request.pickupDateTime(),
+                request.tripDistance(),
+                request.pickupLocationId(),
+                request.dropoffLocationId(),
+                round2(request.actualDurationSeconds() / 60.0),
+                round2(prediction.etaSeconds() / 60.0),
+                round2(etaErrorSeconds / 60.0),
+                round2(request.actualFare()),
+                round2(prediction.fare()),
+                round2(fareError),
+                round2(request.actualTolls()),
+                round2(prediction.tolls()),
+                round2(request.actualTotalNoTip()),
+                round2(prediction.totalNoTip()),
+                round2(totalError),
+                round2(Math.abs(totalError)),
+                prediction.currency(),
+                prediction.modelVersion(),
+                prediction.fallbackUsed()
+        ));
+    }
+
     @PostMapping("/options")
     public ResponseEntity<?> rideOptions(@RequestBody RideEstimateRequest request) {
         ResponseEntity<?> validation = validateRequest(request);
@@ -619,6 +675,47 @@ public class RideEstimateController {
     }
 
     public record RideEstimateRequest(String source, String destination, String departureTime) {
+    }
+
+    public record AccuracyCheckRequest(
+            int sampleId,
+            String sourceLabel,
+            String destinationLabel,
+            String pickupDateTime,
+            double tripDistance,
+            String pickupLocationId,
+            String dropoffLocationId,
+            double actualDurationSeconds,
+            double actualFare,
+            double actualTolls,
+            double actualTotalNoTip
+    ) {
+    }
+
+    public record AccuracyCheckResponse(
+            int sampleId,
+            String sourceLabel,
+            String destinationLabel,
+            String pickupDateTime,
+            double tripDistance,
+            String pickupLocationId,
+            String dropoffLocationId,
+            double actualEtaMinutes,
+            double predictedEtaMinutes,
+            double etaDifferenceMinutes,
+            double actualFare,
+            double predictedFare,
+            double fareDifference,
+            double actualTolls,
+            double predictedTolls,
+            double actualTotalNoTip,
+            double predictedTotalNoTip,
+            double totalDifference,
+            double absoluteTotalDifference,
+            String currency,
+            String modelVersion,
+            boolean fallbackUsed
+    ) {
     }
 
     public record CreateRideRequest(

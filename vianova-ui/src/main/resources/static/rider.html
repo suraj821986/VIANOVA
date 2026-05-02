@@ -19,6 +19,7 @@
 <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="/js/modules/shared-components.js"></script>
 <script src="/js/modules/chatbot-components.js"></script>
+<script src="/js/modules/accuracy-samples.js"></script>
 <script src="/js/modules/rider-components.js"></script>
 <script src="/js/modules/driver-components.js"></script>
 <script src="/js/modules/app-shell.js"></script>
@@ -86,6 +87,14 @@
     const riderForm = document.getElementById("riderForm");
     const riderHint = document.getElementById("riderHint");
     const estimate = document.getElementById("estimate");
+    const riderToolTabs = document.getElementById("riderToolTabs");
+    const rideEstimateTabBtn = document.getElementById("rideEstimateTabBtn");
+    const accuracyCheckTabBtn = document.getElementById("accuracyCheckTabBtn");
+    const accuracyCheckPanel = document.getElementById("accuracyCheckPanel");
+    const accuracySampleSelect = document.getElementById("accuracySampleSelect");
+    const accuracyCheckBtn = document.getElementById("accuracyCheckBtn");
+    const accuracySampleDetails = document.getElementById("accuracySampleDetails");
+    const accuracyResult = document.getElementById("accuracyResult");
     const drivers = document.getElementById("drivers");
     const riderOptionsBlock = document.getElementById("riderOptionsBlock");
     const riderOptions = document.getElementById("riderOptions");
@@ -161,8 +170,120 @@
         drivers.innerHTML = "";
     }
 
+    function accuracySamples() {
+        return window.VianovaAccuracySamples || [];
+    }
+
+    function formatMoney(value, currency) {
+        return `${currency || "USD"} ${Number(value || 0).toFixed(2)}`;
+    }
+
+    function formatSigned(value, suffix) {
+        const numeric = Number(value || 0);
+        const sign = numeric > 0 ? "+" : "";
+        return `${sign}${numeric.toFixed(2)}${suffix || ""}`;
+    }
+
+    function selectedAccuracySample() {
+        const sampleId = Number(accuracySampleSelect.value);
+        return accuracySamples().find(sample => sample.sampleId === sampleId) || accuracySamples()[0];
+    }
+
+    function renderAccuracySampleDetails() {
+        const sample = selectedAccuracySample();
+        if (!sample) {
+            accuracySampleDetails.textContent = "No Excel sample rows are available.";
+            return;
+        }
+        accuracySampleDetails.innerHTML = `
+            <div><strong>Route:</strong> ${sample.sourceLabel} -> ${sample.destinationLabel}</div>
+            <div><strong>Excel pickup:</strong> ${sample.pickupDateTime.replace("T", " ")}</div>
+            <div><strong>Model inputs:</strong> ${sample.tripDistance} mi, PU ${sample.pickupLocationId}, DO ${sample.dropoffLocationId}</div>
+            <div><strong>Actual Excel values:</strong> ETA ${(sample.actualDurationSeconds / 60).toFixed(2)} mins, Fare ${formatMoney(sample.actualFare)}</div>
+        `;
+    }
+
+    function initializeAccuracySamples() {
+        const samples = accuracySamples();
+        accuracySampleSelect.innerHTML = samples.map(sample => `
+            <option value="${sample.sampleId}">
+                Row ${sample.sampleId}: ${sample.sourceLabel} -> ${sample.destinationLabel}
+            </option>
+        `).join("");
+        renderAccuracySampleDetails();
+    }
+
+    function setRiderToolTab(tabName) {
+        const accuracyMode = tabName === "accuracy";
+        rideEstimateTabBtn.classList.toggle("active", !accuracyMode);
+        accuracyCheckTabBtn.classList.toggle("active", accuracyMode);
+        riderForm.classList.toggle("hidden", accuracyMode);
+        estimate.classList.toggle("hidden", accuracyMode);
+        accuracyCheckPanel.classList.toggle("hidden", !accuracyMode);
+        if (accuracyMode) {
+            hideEstimateComparisonPanels();
+            closeNegotiationPanel();
+        }
+    }
+
+    async function runAccuracyCheck() {
+        const sample = selectedAccuracySample();
+        if (!sample) {
+            accuracyResult.textContent = "No Excel sample row is selected.";
+            return;
+        }
+        accuracyCheckBtn.disabled = true;
+        accuracyCheckBtn.textContent = "Checking...";
+        accuracyResult.innerHTML = `<div class="accuracy-status">Running model prediction for row ${sample.sampleId}...</div>`;
+        try {
+            const response = await fetch("/api/rides/accuracy-check", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(sample)
+            });
+            const body = await response.text();
+            if (!response.ok) {
+                accuracyResult.textContent = `Error ${response.status}: ${body}`;
+                return;
+            }
+            const result = JSON.parse(body);
+            accuracyResult.innerHTML = `
+                <div class="accuracy-metrics">
+                    <article class="accuracy-metric">
+                        <span>Predicted ETA</span>
+                        <strong>${Number(result.predictedEtaMinutes).toFixed(2)} mins</strong>
+                        <small>Actual ${Number(result.actualEtaMinutes).toFixed(2)} mins</small>
+                        <b>${formatSigned(result.etaDifferenceMinutes, " mins")}</b>
+                    </article>
+                    <article class="accuracy-metric">
+                        <span>Predicted Fare</span>
+                        <strong>${formatMoney(result.predictedFare, result.currency)}</strong>
+                        <small>Actual ${formatMoney(result.actualFare, result.currency)}</small>
+                        <b>${formatSigned(result.fareDifference)}</b>
+                    </article>
+                </div>
+                <div class="accuracy-footnote">
+                    Model ${result.modelVersion}${result.fallbackUsed ? " (fallback)" : ""}.
+                </div>
+            `;
+        } catch (error) {
+            accuracyResult.textContent = `Request failed: ${error}`;
+        } finally {
+            accuracyCheckBtn.disabled = false;
+            accuracyCheckBtn.textContent = "Get Estimate";
+        }
+    }
+
     negotiationLauncherBtn.addEventListener("click", openNegotiationPanel);
     negotiationMinimizeBtn.addEventListener("click", minimizeNegotiationPanel);
+    rideEstimateTabBtn.addEventListener("click", () => setRiderToolTab("estimate"));
+    accuracyCheckTabBtn.addEventListener("click", () => setRiderToolTab("accuracy"));
+    accuracySampleSelect.addEventListener("change", () => {
+        renderAccuracySampleDetails();
+        accuracyResult.innerHTML = "";
+    });
+    accuracyCheckBtn.addEventListener("click", runAccuracyCheck);
+    initializeAccuracySamples();
 
     toggleTripSaveCardBtn.addEventListener("click", () => {
         const isOpening = tripSaveCardForm.classList.contains("hidden");
@@ -201,9 +322,11 @@
             riderLogoutBtn.classList.remove("hidden");
             riderProfilePanel.classList.add("hidden");
             riderProfileBtn.textContent = "My Profile";
+            riderToolTabs.classList.remove("hidden");
             riderForm.classList.remove("hidden");
             riderHint.classList.remove("hidden");
             estimate.classList.remove("hidden");
+            setRiderToolTab("estimate");
         } catch (error) {
             riderLoginMessage.textContent = `Login request failed: ${error}`;
         }
@@ -330,9 +453,12 @@
         riderPaymentForm.reset();
         riderCardForm.reset();
         tripSaveCardForm.reset();
+        riderToolTabs.classList.add("hidden");
         riderForm.classList.add("hidden");
         riderHint.classList.add("hidden");
         estimate.classList.add("hidden");
+        accuracyCheckPanel.classList.add("hidden");
+        accuracyResult.innerHTML = "";
         riderOptionsBlock.classList.add("hidden");
         negotiationBlock.classList.add("hidden");
         negotiationLauncherBtn.classList.add("hidden");
@@ -677,7 +803,6 @@
             <article class="driver-card">
                 <strong>${driver.name}</strong>
                 <div>${driver.vehicle}</div>
-                <div>Arrives in ${driver.etaMinutes} mins</div>
                 <div>Rating ${driver.rating}</div>
                 <button class="secondary negotiate-btn" data-driver-id="${driver.driverId}" data-driver="${driver.name}" style="margin-top:8px;">Negotiate Fare</button>
             </article>

@@ -119,6 +119,52 @@ public class RideMlEstimatorService {
         }
     }
 
+    public FeatureEstimateResult estimateFeatures(double tripDistance, String pickupZoneId, String dropoffZoneId, LocalDateTime departureTime) {
+        String flowId = UUID.randomUUID().toString();
+        EstimateFeatures features = new EstimateFeatures(tripDistance, pickupZoneId, dropoffZoneId);
+        if (!mlServiceEnabled) {
+            return fallbackFeatureEstimate(features, "disabled");
+        }
+
+        try {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("trip_distance", tripDistance);
+            payload.put("PULocationID", pickupZoneId);
+            payload.put("DOLocationID", dropoffZoneId);
+            payload.put("pickup_hour", departureTime.getHour());
+            payload.put("pickup_dow", departureTime.getDayOfWeek().getValue() - 1);
+            payload.put("pickup_month", departureTime.getMonthValue());
+
+            String endpoint = trimTrailingSlash(mlServiceBaseUrl) + "/ml/v1/predict";
+            HttpRequest request = HttpRequest.newBuilder(URI.create(endpoint))
+                    .header("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+                    .header("X-Flow-Id", flowId)
+                    .timeout(Duration.ofSeconds(10))
+                    .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(payload)))
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                log.warn("Ride feature estimate flow {} falling back because ML status was {}", flowId, response.statusCode());
+                return fallbackFeatureEstimate(features, "http_" + response.statusCode());
+            }
+
+            JsonNode body = objectMapper.readTree(response.body());
+            return new FeatureEstimateResult(
+                    round2(body.path("total_no_tip").asDouble(0.0)),
+                    round2(body.path("fare_pred").asDouble(0.0)),
+                    round2(body.path("tolls_pred").asDouble(0.0)),
+                    round2(body.path("eta_pred_sec").asDouble(0.0)),
+                    "USD",
+                    body.path("model_version").asText("ml-service"),
+                    false
+            );
+        } catch (Exception ex) {
+            log.error("Ride feature estimate flow {} failed while calling ML service", flowId, ex);
+            return fallbackFeatureEstimate(features, "exception");
+        }
+    }
+
     private EstimateFeatures buildFeatures(String source, String destination, LocalDateTime departureTime) {
         String sourceKey = normalize(source);
         String destinationKey = normalize(destination);
@@ -140,6 +186,19 @@ public class RideMlEstimatorService {
         double baseFare = 3.20 + (features.tripDistance() * 2.85);
         double estimatedFare = baseFare + 3.05;
         return new EstimateResult(round2(estimatedFare), etaMinutes, "USD", "fallback_" + modelVersionSuffix, true);
+    }
+
+    private FeatureEstimateResult fallbackFeatureEstimate(EstimateFeatures features, String modelVersionSuffix) {
+        EstimateResult estimate = fallbackEstimate(features, modelVersionSuffix);
+        return new FeatureEstimateResult(
+                estimate.estimatedFare(),
+                estimate.estimatedFare(),
+                0.0,
+                estimate.estimatedTimeMinutes() * 60.0,
+                estimate.currency(),
+                estimate.modelVersion(),
+                true
+        );
     }
 
     private int stableZoneId(String value) {
@@ -172,6 +231,17 @@ public class RideMlEstimatorService {
     public record EstimateResult(
             double estimatedFare,
             int estimatedTimeMinutes,
+            String currency,
+            String modelVersion,
+            boolean fallbackUsed
+    ) {
+    }
+
+    public record FeatureEstimateResult(
+            double totalNoTip,
+            double fare,
+            double tolls,
+            double etaSeconds,
             String currency,
             String modelVersion,
             boolean fallbackUsed

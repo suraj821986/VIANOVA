@@ -9,16 +9,16 @@
 [INFO] 
 [INFO] --- resources:3.3.1:resources (default-resources) @ vianova-ui ---
 [INFO] Copying 1 resource from src\main\resources to target\classes
-[INFO] Copying 12 resources from src\main\resources to target\classes
+[INFO] Copying 13 resources from src\main\resources to target\classes
 [INFO] 
 [INFO] --- compiler:3.14.1:compile (default-compile) @ vianova-ui ---
 [INFO] Nothing to compile - all classes are up to date.
 [INFO] 
 [INFO] --- resources:3.3.1:testResources (default-testResources) @ vianova-ui ---
-[INFO] skip non existing resourceDirectory C:\Users\suraj\IdeaProjects\vianova\vianova-ui\src\test\resources
+[INFO] Not copying test resources
 [INFO] 
 [INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ vianova-ui ---
-[INFO] Nothing to compile - all classes are up to date.
+[INFO] Not compiling test sources
 [INFO] 
 [INFO] <<< spring-boot:4.0.3:run (default-cli) < test-compile @ vianova-ui <<<
 [INFO] 
@@ -35,23 +35,23 @@
 
  :: Spring Boot ::                (v4.0.3)
 
-2026-04-28T23:41:30.028-05:00  INFO 1664 --- [vianova-ui] [           main] c.e.vianovaui.VianovaUiApplication       : Starting VianovaUiApplication using Java 19.0.2 with PID 1664 (C:\Users\suraj\IdeaProjects\vianova\vianova-ui\target\classes started by suraj in C:\Users\suraj\IdeaProjects\vianova\vianova-ui)
-2026-04-28T23:41:30.033-05:00  INFO 1664 --- [vianova-ui] [           main] c.e.vianovaui.VianovaUiApplication       : No active profile set, falling back to 1 default profile: "default"
-2026-04-28T23:41:30.912-05:00  INFO 1664 --- [vianova-ui] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 8081 (http)
-2026-04-28T23:41:30.928-05:00  INFO 1664 --- [vianova-ui] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
-2026-04-28T23:41:30.928-05:00  INFO 1664 --- [vianova-ui] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.18]
-2026-04-28T23:41:30.986-05:00  INFO 1664 --- [vianova-ui] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 901 ms
-2026-04-28T23:41:31.322-05:00  INFO 1664 --- [vianova-ui] [           main] o.s.b.w.a.WelcomePageHandlerMapping      : Adding welcome page: class path resource [static/index.html]
-2026-04-28T23:41:31.598-05:00  INFO 1664 --- [vianova-ui] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 8081 (http) with context path '/'
-2026-04-28T23:41:31.598-05:00  INFO 1664 --- [vianova-ui] [           main] c.e.vianovaui.VianovaUiApplication       : Started VianovaUiApplication in 2.02 seconds (process running for 2.347)
-2026-04-28T23:41:50.975-05:00  INFO 1664 --- [vianova-ui] [nio-8081-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
-2026-04-28T23:41:50.975-05:00  INFO 1664 --- [vianova-ui] [nio-8081-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
-2026-04-28T23:41:50.975-05:00  INFO 1664 --- [vianova-ui] [nio-8081-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 0 ms
+2026-05-01T21:35:42.034-05:00  INFO 16520 --- [vianova-ui] [           main] c.e.vianovaui.VianovaUiApplication       : Starting VianovaUiApplication using Java 19.0.2 with PID 16520 (C:\Users\suraj\IdeaProjects\vianova\vianova-ui\target\classes started by suraj in C:\Users\suraj\IdeaProjects\vianova\vianova-ui)
+2026-05-01T21:35:42.039-05:00  INFO 16520 --- [vianova-ui] [           main] c.e.vianovaui.VianovaUiApplication       : No active profile set, falling back to 1 default profile: "default"
+2026-05-01T21:35:42.919-05:00  INFO 16520 --- [vianova-ui] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 8081 (http)
+2026-05-01T21:35:42.963-05:00  INFO 16520 --- [vianova-ui] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-05-01T21:35:42.964-05:00  INFO 16520 --- [vianova-ui] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.18]
+2026-05-01T21:35:43.054-05:00  INFO 16520 --- [vianova-ui] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 962 ms
+2026-05-01T21:35:43.381-05:00  INFO 16520 --- [vianova-ui] [           main] o.s.b.w.a.WelcomePageHandlerMapping      : Adding welcome page: class path resource [static/index.html]
+2026-05-01T21:35:43.653-05:00  INFO 16520 --- [vianova-ui] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 8081 (http) with context path '/'
+2026-05-01T21:35:43.660-05:00  INFO 16520 --- [vianova-ui] [           main] c.e.vianovaui.VianovaUiApplication       : Started VianovaUiApplication in 2.17 seconds (process running for 2.59)
+2026-05-01T21:35:54.701-05:00  INFO 16520 --- [vianova-ui] [nio-8081-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-05-01T21:35:54.701-05:00  INFO 16520 --- [vianova-ui] [nio-8081-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-05-01T21:35:54.704-05:00  INFO 16520 --- [vianova-ui] [nio-8081-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms
 [INFO] ------------------------------------------------------------------------
 [INFO] BUILD FAILURE
 [INFO] ------------------------------------------------------------------------
-[INFO] Total time:  46.040 s
-[INFO] Finished at: 2026-04-28T23:42:13-05:00
+[INFO] Total time:  43.792 s
+[INFO] Finished at: 2026-05-01T21:36:21-05:00
 [INFO] ------------------------------------------------------------------------
 [ERROR] Failed to execute goal org.springframework.boot:spring-boot-maven-plugin:4.0.3:run (default-cli) on project vianova-ui: Process terminated with exit code: -1 -> [Help 1]
 [ERROR] 
@@ -59,4 +59,6 @@
 [ERROR] Re-run Maven using the -X switch to enable full debug logging.
 [ERROR] 
 [ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoExecutionException
+ articles:
 [ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoExecutionException

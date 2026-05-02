@@ -206,7 +206,7 @@
                         setIsMinimized(false);
                     }
                 },
-                "Open Chatbot"
+                "Vianova Support"
             ),
             h(
                 "section",
@@ -218,7 +218,7 @@
                         "div",
                         null,
                         h("p", { className: "chatbot-eyebrow" }, "Assistant"),
-                        h("h3", null, "Vianova Chatbot"),
+                                h("h3", null, "Vianova Support"),
                         h("p", { className: "chatbot-subtitle" }, "Ask for ride estimates, cards, payments, ratings, cars, ride history, or trip tracking."),
                         h("p", { className: "chatbot-session" }, formatContextStatus(chatContext))
                     ),

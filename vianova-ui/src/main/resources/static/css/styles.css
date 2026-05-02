@@ -338,6 +338,7 @@ p {
 .cars-block,
 .ratings-block,
 .profile-panel,
+.accuracy-panel,
 #estimate {
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
@@ -355,6 +356,7 @@ p {
 .cars-block,
 .ratings-block,
 .profile-panel,
+.accuracy-panel,
 #estimate,
 .ride-item,
 .car-item,
@@ -553,6 +555,89 @@ select option {
 
 .use-location-btn {
     justify-self: start;
+}
+
+.rider-tool-tabs {
+    display: inline-flex;
+    gap: var(--space-xs);
+    padding: 0.35rem;
+    margin-bottom: var(--space-md);
+    border: 1px solid rgba(143, 178, 214, 0.18);
+    border-radius: var(--radius-md);
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.tool-tab {
+    min-height: 2.65rem;
+    padding: 0.7rem 1rem;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    color: var(--muted);
+    background: transparent;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.tool-tab.active {
+    border-color: rgba(91, 255, 204, 0.35);
+    color: var(--text);
+    background: rgba(91, 255, 204, 0.13);
+}
+
+.accuracy-panel {
+    display: grid;
+    gap: var(--space-md);
+    margin-top: var(--space-md);
+}
+
+.accuracy-panel h4 {
+    margin: 0;
+}
+
+.accuracy-controls {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--space-sm);
+    align-items: center;
+}
+
+.accuracy-details,
+.accuracy-footnote,
+.accuracy-status {
+    font-size: var(--text-sm);
+    line-height: var(--line-body);
+    color: var(--muted);
+}
+
+.accuracy-metrics {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-sm);
+}
+
+.accuracy-metric {
+    display: grid;
+    gap: 0.35rem;
+    min-height: 8.5rem;
+    padding: var(--space-md);
+    border: 1px solid rgba(143, 178, 214, 0.16);
+    border-radius: var(--radius-md);
+    background: rgba(255, 255, 255, 0.96);
+    color: var(--text-dark);
+}
+
+.accuracy-metric span,
+.accuracy-metric small {
+    color: rgba(18, 37, 61, 0.68);
+}
+
+.accuracy-metric strong {
+    font-size: var(--text-xl);
+    line-height: var(--line-tight);
+}
+
+.accuracy-metric b {
+    color: #075f47;
 }
 
 .suggestions {
@@ -1129,7 +1214,9 @@ select option {
     }
 
     .trip-card-form,
-    .trip-payment-form {
+    .trip-payment-form,
+    .accuracy-controls,
+    .accuracy-metrics {
         grid-template-columns: 1fr;
     }
 

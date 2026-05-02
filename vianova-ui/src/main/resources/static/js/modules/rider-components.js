@@ -95,6 +95,12 @@
             ReactRef.Fragment,
             null,
             h(
+                "div",
+                { className: "rider-tool-tabs hidden", id: "riderToolTabs" },
+                h("button", { id: "rideEstimateTabBtn", className: "tool-tab active", type: "button" }, "Ride estimate"),
+                h("button", { id: "accuracyCheckTabBtn", className: "tool-tab", type: "button" }, "Accuracy check")
+            ),
+            h(
                 "form",
                 { id: "riderForm", className: "rider-form hidden" },
                 h(
@@ -115,6 +121,19 @@
             ),
             h("p", { id: "riderHint", className: "hint hidden" }),
             h("div", { id: "estimate", className: "hidden" }, "Fill source, destination and time, then click Get Estimate."),
+            h(
+                "section",
+                { id: "accuracyCheckPanel", className: "accuracy-panel hidden" },
+                h("h4", null, "Accuracy Check"),
+                h(
+                    "div",
+                    { className: "accuracy-controls" },
+                    h("select", { id: "accuracySampleSelect", "aria-label": "Excel sample trip" }),
+                    h("button", { id: "accuracyCheckBtn", className: "primary", type: "button" }, "Get Estimate")
+                ),
+                h("div", { id: "accuracySampleDetails", className: "accuracy-details" }),
+                h("div", { id: "accuracyResult", className: "accuracy-result" })
+            ),
             h("div", { id: "drivers" })
         );
     }

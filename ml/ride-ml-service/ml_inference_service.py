@@ -163,11 +163,23 @@ def predict_internal(flow_id: str, trip_distance: float, pickup_zone_id: str, dr
         "pickup_month": float(pickup_month),
     }])
 
-    eta_pred_sec = float(eta_model.predict(base_features)[0])
-    eta_pred_sec = max(0.0, eta_pred_sec)
+    raw_eta_pred_sec = float(eta_model.predict(base_features)[0])
+    eta_fallback_used = raw_eta_pred_sec <= 0.0
+    if eta_fallback_used:
+        eta_pred_sec = fallback_eta_seconds(float(trip_distance), pickup_hour)
+        eta_for_fare_sec = 0.0
+        logger.warning(
+            "flow_id=%s ETA model returned non-positive value raw_eta_pred_sec=%.2f; using fallback_eta_sec=%.2f",
+            flow_id,
+            raw_eta_pred_sec,
+            eta_pred_sec,
+        )
+    else:
+        eta_pred_sec = raw_eta_pred_sec
+        eta_for_fare_sec = eta_pred_sec
 
     fare_features = base_features.copy()
-    fare_features["eta_pred_sec"] = eta_pred_sec
+    fare_features["eta_pred_sec"] = eta_for_fare_sec
 
     fare_pred = float(fare_model.predict(fare_features)[0])
     fare_pred = max(0.0, fare_pred)
@@ -184,13 +196,14 @@ def predict_internal(flow_id: str, trip_distance: float, pickup_zone_id: str, dr
     total_no_tip = fare_pred + tolls_pred + congestion_surcharge + improvement_surcharge
     total_no_tip = max(0.0, total_no_tip)
     logger.info(
-        "flow_id=%s prediction output eta_pred_sec=%.2f fare_pred=%.2f tolls_pred=%.2f total_no_tip=%.2f model_version=%s",
+        "flow_id=%s prediction output eta_pred_sec=%.2f fare_pred=%.2f tolls_pred=%.2f total_no_tip=%.2f model_version=%s eta_fallback_used=%s",
         flow_id,
         eta_pred_sec,
         fare_pred,
         tolls_pred,
         total_no_tip,
         MODEL_VERSION,
+        eta_fallback_used,
     )
 
     return PredictResponse(
@@ -198,8 +211,15 @@ def predict_internal(flow_id: str, trip_distance: float, pickup_zone_id: str, dr
         fare_pred=round(fare_pred, 2),
         tolls_pred=round(tolls_pred, 2),
         total_no_tip=round(total_no_tip, 2),
-        model_version=MODEL_VERSION
+        model_version=MODEL_VERSION + ("_eta_floor" if eta_fallback_used else "")
     )
+
+
+def fallback_eta_seconds(trip_distance: float, pickup_hour: int) -> float:
+    city_speed_mph = 11.0 if 7 <= pickup_hour <= 10 or 16 <= pickup_hour <= 19 else 14.0
+    moving_seconds = max(60.0, trip_distance / city_speed_mph * 3600.0)
+    pickup_buffer_seconds = 90.0
+    return max(120.0, moving_seconds + pickup_buffer_seconds)
 
 
 def ensure_geospatial_ready():

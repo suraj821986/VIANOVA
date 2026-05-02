@@ -1,18 +1,111 @@
-2026-05-01 19:55:13,889 INFO Loaded taxi zones from C:\Users\suraj\IdeaProjects\vianova\ml\taxizones\taxi_zones.shp with 263 rows and columns=['OBJECTID', 'Shape_Leng', 'Shape_Area', 'zone', 'LocationID', 'borough', 'geometry']
-2026-05-01 19:55:13,889 INFO Loaded taxi zones from C:\Users\suraj\IdeaProjects\vianova\ml\taxizones\taxi_zones.shp with 263 rows and columns=['OBJECTID', 'Shape_Leng', 'Shape_Area', 'zone', 'LocationID', 'borough', 'geometry']
-2026-05-01 19:55:42,153 INFO health check model_version=xgb_v1 tolls_enabled=True
-2026-05-01 19:58:42,600 INFO flow_id=f6201922-3bce-47ab-8010-88300165c5cb received address prediction request source_address='John F. Kennedy International Airport, JFK Access Road, Queens, Queens County, New York, 11430, United States' destination_address='Times Square, Manhattan Community Board 5, Manhattan, New York County, New York, 10036, United States' departure_time=2026-05-02T01:10:00
-2026-05-01 19:58:43,783 INFO geocode query='John F. Kennedy International Airport, JFK Access Road, Queens, Queens County, New York, 11430, United States' normalized_query='John F. Kennedy International Airport, JFK Access Road, Queens, Queens County, New York, 11430, United States' selected_score=250 selected_display_name='John F. Kennedy International Airport, JFK Access Road, Queens, Queens County, New York, 11430, United States' candidate_scores=[{'score': 250, 'display_name': 'John F. Kennedy International Airport, JFK Access Road, Queens, Queens County, New York, 11430, United States'}]
-2026-05-01 19:58:44,398 INFO geocode query='Times Square, Manhattan Community Board 5, Manhattan, New York County, New York, 10036, United States' normalized_query='Times Square, Manhattan Community Board 5, Manhattan, New York County, New York, 10036, United States' selected_score=260 selected_display_name='Times Square, Manhattan Community Board 5, Manhattan, New York County, New York, 10036, United States' candidate_scores=[{'score': 260, 'display_name': 'Times Square, Manhattan Community Board 5, Manhattan, New York County, New York, 10036, United States'}, {'score': 258, 'display_name': 'Times Square, Manhattan Community Board 5, Manhattan, New York County, New York, 10036, United States'}, {'score': 165, 'display_name': 'Times Square, West 43rd Street, Times Square, Manhattan Community Board 5, Manhattan, New York County, New York, 10036, United States'}, {'score': 165, 'display_name': 'Times Square, West 42nd Street, Times Square, Manhattan Community Board 5, Manhattan, New York County, New York, 10036, United States'}]
-2026-05-01 19:58:45,302 INFO flow_id=f6201922-3bce-47ab-8010-88300165c5cb resolved source_lat=40.642948 source_lon=-73.779373 destination_lat=40.757010 destination_lon=-73.985972 source_zone=132 destination_zone=230 trip_distance=13.39
-2026-05-01 19:58:46,300 INFO flow_id=f6201922-3bce-47ab-8010-88300165c5cb prediction output eta_pred_sec=616.52 fare_pred=34.68 tolls_pred=4.89 total_no_tip=42.62 model_version=xgb_v1
-2026-05-01 20:03:03,284 INFO flow_id=00de19ef-c833-400f-9fe6-d079479e13a8 received address prediction request source_address='John F. Kennedy International Airport, JFK Access Road, Queens, Queens County, New York, 11430, United States' destination_address='Times Square, Manhattan Community Board 5, Manhattan, New York County, New York, 10036, United States' departure_time=2026-05-02T01:10:00
-2026-05-01 20:03:06,952 INFO geocode query='John F. Kennedy International Airport, JFK Access Road, Queens, Queens County, New York, 11430, United States' normalized_query='John F. Kennedy International Airport, JFK Access Road, Queens, Queens County, New York, 11430, United States' selected_score=250 selected_display_name='John F. Kennedy International Airport, JFK Access Road, Queens, Queens County, New York, 11430, United States' candidate_scores=[{'score': 250, 'display_name': 'John F. Kennedy International Airport, JFK Access Road, Queens, Queens County, New York, 11430, United States'}]
-2026-05-01 20:03:08,062 INFO geocode query='Times Square, Manhattan Community Board 5, Manhattan, New York County, New York, 10036, United States' normalized_query='Times Square, Manhattan Community Board 5, Manhattan, New York County, New York, 10036, United States' selected_score=260 selected_display_name='Times Square, Manhattan Community Board 5, Manhattan, New York County, New York, 10036, United States' candidate_scores=[{'score': 260, 'display_name': 'Times Square, Manhattan Community Board 5, Manhattan, New York County, New York, 10036, United States'}, {'score': 258, 'display_name': 'Times Square, Manhattan Community Board 5, Manhattan, New York County, New York, 10036, United States'}, {'score': 165, 'display_name': 'Times Square, West 43rd Street, Times Square, Manhattan Community Board 5, Manhattan, New York County, New York, 10036, United States'}, {'score': 165, 'display_name': 'Times Square, West 42nd Street, Times Square, Manhattan Community Board 5, Manhattan, New York County, New York, 10036, United States'}]
-2026-05-01 20:03:08,726 INFO flow_id=00de19ef-c833-400f-9fe6-d079479e13a8 resolved source_lat=40.642948 source_lon=-73.779373 destination_lat=40.757010 destination_lon=-73.985972 source_zone=132 destination_zone=230 trip_distance=13.39
-2026-05-01 20:03:09,054 INFO flow_id=00de19ef-c833-400f-9fe6-d079479e13a8 prediction output eta_pred_sec=616.52 fare_pred=34.68 tolls_pred=4.89 total_no_tip=42.62 model_version=xgb_v1
-2026-05-01 20:03:30,447 INFO flow_id=9d02c84b-b560-4510-b6e7-45f600914e2b received address prediction request source_address='John F. Kennedy International Airport, JFK Access Road, Queens, Queens County, New York, 11430, United States' destination_address='Times Square, West 42nd Street, Times Square, Manhattan Community Board 5, Manhattan, New York County, New York, 10036, United States' departure_time=2026-05-02T01:18:00
-2026-05-01 20:03:30,624 INFO geocode query='John F. Kennedy International Airport, JFK Access Road, Queens, Queens County, New York, 11430, United States' normalized_query='John F. Kennedy International Airport, JFK Access Road, Queens, Queens County, New York, 11430, United States' selected_score=250 selected_display_name='John F. Kennedy International Airport, JFK Access Road, Queens, Queens County, New York, 11430, United States' candidate_scores=[{'score': 250, 'display_name': 'John F. Kennedy International Airport, JFK Access Road, Queens, Queens County, New York, 11430, United States'}]
-2026-05-01 20:03:31,564 INFO geocode query='Times Square, West 42nd Street, Times Square, Manhattan Community Board 5, Manhattan, New York County, New York, 10036, United States' normalized_query='Times Square, West 42nd Street, Times Square, Manhattan Community Board 5, Manhattan, New York County, New York, 10036, United States' selected_score=165 selected_display_name='Times Square, West 42nd Street, Times Square, Manhattan Community Board 5, Manhattan, New York County, New York, 10036, United States' candidate_scores=[{'score': 165, 'display_name': 'Times Square, West 42nd Street, Times Square, Manhattan Community Board 5, Manhattan, New York County, New York, 10036, United States'}]
-2026-05-01 20:03:31,578 INFO flow_id=9d02c84b-b560-4510-b6e7-45f600914e2b resolved source_lat=40.642948 source_lon=-73.779373 destination_lat=40.755592 destination_lon=-73.985839 source_zone=132 destination_zone=230 trip_distance=13.32
-2026-05-01 20:03:31,604 INFO flow_id=9d02c84b-b560-4510-b6e7-45f600914e2b prediction output eta_pred_sec=616.52 fare_pred=34.68 tolls_pred=4.89 total_no_tip=42.62 model_version=xgb_v1
+2026-05-01 21:40:17,374 INFO Loaded taxi zones from C:\Users\suraj\IdeaProjects\vianova\ml\taxizones\taxi_zones.shp with 263 rows and columns=['OBJECTID', 'Shape_Leng', 'Shape_Area', 'zone', 'LocationID', 'borough', 'geometry']
+2026-05-01 21:40:18,554 INFO flow_id=no-flow-id received prediction request trip_distance=2.75 source_zone=263 destination_zone=229 pickup_hour=0 pickup_dow=2 pickup_month=10
+2026-05-01 21:40:18,570 WARNING flow_id=no-flow-id ETA model returned non-positive value raw_eta_pred_sec=-364.84; using fallback_eta_sec=797.14
+2026-05-01 21:40:18,589 INFO flow_id=no-flow-id prediction output eta_pred_sec=797.14 fare_pred=12.61 tolls_pred=0.00 total_no_tip=15.66 model_version=xgb_v1 eta_fallback_used=True
+INFO:     127.0.0.1:49167 - "POST /ml/v1/predict HTTP/1.1" 200 OK
+2026-05-01 21:40:30,907 INFO health check model_version=xgb_v1 tolls_enabled=True
+INFO:     127.0.0.1:65514 - "GET /health HTTP/1.1" 200 OK
+2026-05-01 21:40:40,135 INFO flow_id=no-flow-id received prediction request trip_distance=2.75 source_zone=263 destination_zone=229 pickup_hour=0 pickup_dow=2 pickup_month=10
+2026-05-01 21:40:40,147 WARNING flow_id=no-flow-id ETA model returned non-positive value raw_eta_pred_sec=-364.84; using fallback_eta_sec=797.14
+2026-05-01 21:40:40,169 INFO flow_id=no-flow-id prediction output eta_pred_sec=797.14 fare_pred=12.61 tolls_pred=0.00 total_no_tip=15.66 model_version=xgb_v1 eta_fallback_used=True
+INFO:     127.0.0.1:63265 - "POST /ml/v1/predict HTTP/1.1" 200 OK
+2026-05-01 21:43:20,004 INFO flow_id=806837f6-3f58-4afa-b3c8-b927eaad74a2 received prediction request trip_distance=1.82 source_zone=114 destination_zone=100 pickup_hour=0 pickup_dow=2 pickup_month=10
+2026-05-01 21:43:20,282 WARNING flow_id=806837f6-3f58-4afa-b3c8-b927eaad74a2 ETA model returned non-positive value raw_eta_pred_sec=-436.22; using fallback_eta_sec=558.00
+2026-05-01 21:43:20,349 INFO flow_id=806837f6-3f58-4afa-b3c8-b927eaad74a2 prediction output eta_pred_sec=558.00 fare_pred=11.41 tolls_pred=0.00 total_no_tip=14.46 model_version=xgb_v1 eta_fallback_used=True
+INFO:     127.0.0.1:54269 - "POST /ml/v1/predict HTTP/1.1" 200 OK
+2026-05-01 21:43:36,279 INFO flow_id=f6b233bf-42c1-42c0-ac67-c3e984c38b86 received prediction request trip_distance=1.30 source_zone=211 destination_zone=231 pickup_hour=0 pickup_dow=2 pickup_month=10
+2026-05-01 21:43:36,296 WARNING flow_id=f6b233bf-42c1-42c0-ac67-c3e984c38b86 ETA model returned non-positive value raw_eta_pred_sec=-661.07; using fallback_eta_sec=424.29
+2026-05-01 21:43:36,317 INFO flow_id=f6b233bf-42c1-42c0-ac67-c3e984c38b86 prediction output eta_pred_sec=424.29 fare_pred=14.18 tolls_pred=0.00 total_no_tip=17.23 model_version=xgb_v1 eta_fallback_used=True
+INFO:     127.0.0.1:57589 - "POST /ml/v1/predict HTTP/1.1" 200 OK
+2026-05-01 21:43:41,213 INFO flow_id=f3632569-f941-4379-b89b-7b191a4afac8 received prediction request trip_distance=2.88 source_zone=230 destination_zone=151 pickup_hour=0 pickup_dow=2 pickup_month=10
+2026-05-01 21:43:41,230 WARNING flow_id=f3632569-f941-4379-b89b-7b191a4afac8 ETA model returned non-positive value raw_eta_pred_sec=-335.60; using fallback_eta_sec=830.57
+2026-05-01 21:43:41,256 INFO flow_id=f3632569-f941-4379-b89b-7b191a4afac8 prediction output eta_pred_sec=830.57 fare_pred=15.20 tolls_pred=0.00 total_no_tip=18.25 model_version=xgb_v1 eta_fallback_used=True
+INFO:     127.0.0.1:57589 - "POST /ml/v1/predict HTTP/1.1" 200 OK
+2026-05-01 21:44:03,636 INFO flow_id=4a4dacad-2f2e-4747-9a7c-12eee6234ec5 received prediction request trip_distance=1.30 source_zone=211 destination_zone=231 pickup_hour=0 pickup_dow=2 pickup_month=10
+2026-05-01 21:44:03,650 WARNING flow_id=4a4dacad-2f2e-4747-9a7c-12eee6234ec5 ETA model returned non-positive value raw_eta_pred_sec=-661.07; using fallback_eta_sec=424.29
+2026-05-01 21:44:03,668 INFO flow_id=4a4dacad-2f2e-4747-9a7c-12eee6234ec5 prediction output eta_pred_sec=424.29 fare_pred=14.18 tolls_pred=0.00 total_no_tip=17.23 model_version=xgb_v1 eta_fallback_used=True
+INFO:     127.0.0.1:65458 - "POST /ml/v1/predict HTTP/1.1" 200 OK
+2026-05-01 21:44:11,638 INFO flow_id=1e0b4e81-4a57-46ff-8b58-a34575a29aa1 received prediction request trip_distance=1.20 source_zone=234 destination_zone=249 pickup_hour=0 pickup_dow=2 pickup_month=10
+2026-05-01 21:44:11,651 WARNING flow_id=1e0b4e81-4a57-46ff-8b58-a34575a29aa1 ETA model returned non-positive value raw_eta_pred_sec=-684.55; using fallback_eta_sec=398.57
+2026-05-01 21:44:11,670 INFO flow_id=1e0b4e81-4a57-46ff-8b58-a34575a29aa1 prediction output eta_pred_sec=398.57 fare_pred=14.39 tolls_pred=0.00 total_no_tip=17.44 model_version=xgb_v1 eta_fallback_used=True
+INFO:     127.0.0.1:65459 - "POST /ml/v1/predict HTTP/1.1" 200 OK
+2026-05-01 21:44:26,651 INFO flow_id=5cec0279-db74-459d-8a6e-c69246fe41da received prediction request trip_distance=5.00 source_zone=107 destination_zone=225 pickup_hour=0 pickup_dow=2 pickup_month=10
+2026-05-01 21:44:26,682 INFO flow_id=5cec0279-db74-459d-8a6e-c69246fe41da prediction output eta_pred_sec=521.26 fare_pred=0.00 tolls_pred=0.00 total_no_tip=3.05 model_version=xgb_v1 eta_fallback_used=False
+INFO:     127.0.0.1:61619 - "POST /ml/v1/predict HTTP/1.1" 200 OK
+2026-05-01 21:44:34,241 INFO flow_id=d86ff8bf-d72d-4a87-a208-0e74727e8c7f received prediction request trip_distance=1.60 source_zone=237 destination_zone=142 pickup_hour=0 pickup_dow=2 pickup_month=10
+2026-05-01 21:44:34,250 WARNING flow_id=d86ff8bf-d72d-4a87-a208-0e74727e8c7f ETA model returned non-positive value raw_eta_pred_sec=-553.43; using fallback_eta_sec=501.43
+2026-05-01 21:44:34,267 INFO flow_id=d86ff8bf-d72d-4a87-a208-0e74727e8c7f prediction output eta_pred_sec=501.43 fare_pred=12.47 tolls_pred=0.00 total_no_tip=15.52 model_version=xgb_v1 eta_fallback_used=True
+INFO:     127.0.0.1:61620 - "POST /ml/v1/predict HTTP/1.1" 200 OK
+2026-05-01 21:44:45,231 INFO flow_id=8190bf32-7ca4-4cdd-aac4-44a13a4c1a88 received prediction request trip_distance=2.75 source_zone=263 destination_zone=229 pickup_hour=0 pickup_dow=2 pickup_month=10
+2026-05-01 21:44:45,242 WARNING flow_id=8190bf32-7ca4-4cdd-aac4-44a13a4c1a88 ETA model returned non-positive value raw_eta_pred_sec=-364.84; using fallback_eta_sec=797.14
+2026-05-01 21:44:45,259 INFO flow_id=8190bf32-7ca4-4cdd-aac4-44a13a4c1a88 prediction output eta_pred_sec=797.14 fare_pred=12.61 tolls_pred=0.00 total_no_tip=15.66 model_version=xgb_v1 eta_fallback_used=True
+INFO:     127.0.0.1:55962 - "POST /ml/v1/predict HTTP/1.1" 200 OK
+2026-05-01 21:44:51,325 INFO flow_id=95463bda-418c-42b4-98b1-5caa70574504 received prediction request trip_distance=1.30 source_zone=211 destination_zone=231 pickup_hour=0 pickup_dow=2 pickup_month=10
+2026-05-01 21:44:51,336 WARNING flow_id=95463bda-418c-42b4-98b1-5caa70574504 ETA model returned non-positive value raw_eta_pred_sec=-661.07; using fallback_eta_sec=424.29
+2026-05-01 21:44:51,353 INFO flow_id=95463bda-418c-42b4-98b1-5caa70574504 prediction output eta_pred_sec=424.29 fare_pred=14.18 tolls_pred=0.00 total_no_tip=17.23 model_version=xgb_v1 eta_fallback_used=True
+INFO:     127.0.0.1:59200 - "POST /ml/v1/predict HTTP/1.1" 200 OK
+2026-05-01 21:44:54,660 INFO flow_id=97d3d754-71eb-4914-8da4-cda116bfb36f received prediction request trip_distance=2.88 source_zone=230 destination_zone=151 pickup_hour=0 pickup_dow=2 pickup_month=10
+2026-05-01 21:44:54,672 WARNING flow_id=97d3d754-71eb-4914-8da4-cda116bfb36f ETA model returned non-positive value raw_eta_pred_sec=-335.60; using fallback_eta_sec=830.57
+2026-05-01 21:44:54,688 INFO flow_id=97d3d754-71eb-4914-8da4-cda116bfb36f prediction output eta_pred_sec=830.57 fare_pred=15.20 tolls_pred=0.00 total_no_tip=18.25 model_version=xgb_v1 eta_fallback_used=True
+INFO:     127.0.0.1:59200 - "POST /ml/v1/predict HTTP/1.1" 200 OK
+2026-05-01 21:44:57,533 INFO flow_id=aac25588-3e5a-45f9-bb1b-03b36b0a5bf4 received prediction request trip_distance=1.60 source_zone=237 destination_zone=142 pickup_hour=0 pickup_dow=2 pickup_month=10
+2026-05-01 21:44:57,542 WARNING flow_id=aac25588-3e5a-45f9-bb1b-03b36b0a5bf4 ETA model returned non-positive value raw_eta_pred_sec=-553.43; using fallback_eta_sec=501.43
+2026-05-01 21:44:57,561 INFO flow_id=aac25588-3e5a-45f9-bb1b-03b36b0a5bf4 prediction output eta_pred_sec=501.43 fare_pred=12.47 tolls_pred=0.00 total_no_tip=15.52 model_version=xgb_v1 eta_fallback_used=True
+INFO:     127.0.0.1:59200 - "POST /ml/v1/predict HTTP/1.1" 200 OK
+2026-05-01 21:45:00,534 INFO flow_id=491fa8bc-516d-4a81-86ee-c7283d92eea3 received prediction request trip_distance=2.81 source_zone=142 destination_zone=166 pickup_hour=0 pickup_dow=2 pickup_month=10
+2026-05-01 21:45:00,545 WARNING flow_id=491fa8bc-516d-4a81-86ee-c7283d92eea3 ETA model returned non-positive value raw_eta_pred_sec=-522.45; using fallback_eta_sec=812.57
+2026-05-01 21:45:00,564 INFO flow_id=491fa8bc-516d-4a81-86ee-c7283d92eea3 prediction output eta_pred_sec=812.57 fare_pred=12.86 tolls_pred=0.00 total_no_tip=15.91 model_version=xgb_v1 eta_fallback_used=True
+INFO:     127.0.0.1:59200 - "POST /ml/v1/predict HTTP/1.1" 200 OK
+2026-05-01 21:45:03,602 INFO flow_id=b5c6b6d8-577a-44fe-91a9-c6547aa691d3 received prediction request trip_distance=2.17 source_zone=230 destination_zone=246 pickup_hour=0 pickup_dow=2 pickup_month=10
+2026-05-01 21:45:03,613 WARNING flow_id=b5c6b6d8-577a-44fe-91a9-c6547aa691d3 ETA model returned non-positive value raw_eta_pred_sec=-375.61; using fallback_eta_sec=648.00
+2026-05-01 21:45:03,629 INFO flow_id=b5c6b6d8-577a-44fe-91a9-c6547aa691d3 prediction output eta_pred_sec=648.00 fare_pred=14.18 tolls_pred=0.00 total_no_tip=17.23 model_version=xgb_v1 eta_fallback_used=True
+INFO:     127.0.0.1:59200 - "POST /ml/v1/predict HTTP/1.1" 200 OK
+2026-05-01 21:45:06,216 INFO flow_id=3c03c4bb-2773-4675-843b-646e529a7fe3 received prediction request trip_distance=3.71 source_zone=140 destination_zone=7 pickup_hour=0 pickup_dow=2 pickup_month=10
+2026-05-01 21:45:06,230 WARNING flow_id=3c03c4bb-2773-4675-843b-646e529a7fe3 ETA model returned non-positive value raw_eta_pred_sec=-168.87; using fallback_eta_sec=1044.00
+2026-05-01 21:45:06,247 INFO flow_id=3c03c4bb-2773-4675-843b-646e529a7fe3 prediction output eta_pred_sec=1044.00 fare_pred=5.85 tolls_pred=0.00 total_no_tip=8.90 model_version=xgb_v1 eta_fallback_used=True
+INFO:     127.0.0.1:59200 - "POST /ml/v1/predict HTTP/1.1" 200 OK
+2026-05-01 21:45:13,884 INFO flow_id=1bb1ee21-d3e0-40e6-846d-f5387dd3e961 received prediction request trip_distance=1.20 source_zone=234 destination_zone=249 pickup_hour=0 pickup_dow=2 pickup_month=10
+2026-05-01 21:45:13,893 WARNING flow_id=1bb1ee21-d3e0-40e6-846d-f5387dd3e961 ETA model returned non-positive value raw_eta_pred_sec=-684.55; using fallback_eta_sec=398.57
+2026-05-01 21:45:13,912 INFO flow_id=1bb1ee21-d3e0-40e6-846d-f5387dd3e961 prediction output eta_pred_sec=398.57 fare_pred=14.39 tolls_pred=0.00 total_no_tip=17.44 model_version=xgb_v1 eta_fallback_used=True
+INFO:     127.0.0.1:56924 - "POST /ml/v1/predict HTTP/1.1" 200 OK
+2026-05-01 21:45:17,121 INFO flow_id=5c9cd7fa-bbb7-40e6-944b-5f5861a213f5 received prediction request trip_distance=3.10 source_zone=231 destination_zone=230 pickup_hour=0 pickup_dow=2 pickup_month=10
+2026-05-01 21:45:17,132 WARNING flow_id=5c9cd7fa-bbb7-40e6-944b-5f5861a213f5 ETA model returned non-positive value raw_eta_pred_sec=-132.15; using fallback_eta_sec=887.14
+2026-05-01 21:45:17,150 INFO flow_id=5c9cd7fa-bbb7-40e6-944b-5f5861a213f5 prediction output eta_pred_sec=887.14 fare_pred=15.04 tolls_pred=0.00 total_no_tip=18.09 model_version=xgb_v1 eta_fallback_used=True
+INFO:     127.0.0.1:56924 - "POST /ml/v1/predict HTTP/1.1" 200 OK
+2026-05-01 21:45:19,763 INFO flow_id=3fb68eaf-0a65-4be8-bdf0-2574a923370b received prediction request trip_distance=0.69 source_zone=33 destination_zone=65 pickup_hour=0 pickup_dow=2 pickup_month=10
+2026-05-01 21:45:19,774 WARNING flow_id=3fb68eaf-0a65-4be8-bdf0-2574a923370b ETA model returned non-positive value raw_eta_pred_sec=-876.67; using fallback_eta_sec=267.43
+2026-05-01 21:45:19,789 INFO flow_id=3fb68eaf-0a65-4be8-bdf0-2574a923370b prediction output eta_pred_sec=267.43 fare_pred=14.03 tolls_pred=0.00 total_no_tip=17.08 model_version=xgb_v1 eta_fallback_used=True
+INFO:     127.0.0.1:56924 - "POST /ml/v1/predict HTTP/1.1" 200 OK
+2026-05-01 21:45:24,220 INFO flow_id=beadf54c-db84-4ac7-82fb-59bb8eac83e8 received prediction request trip_distance=1.10 source_zone=100 destination_zone=229 pickup_hour=0 pickup_dow=2 pickup_month=10
+2026-05-01 21:45:24,231 WARNING flow_id=beadf54c-db84-4ac7-82fb-59bb8eac83e8 ETA model returned non-positive value raw_eta_pred_sec=-672.22; using fallback_eta_sec=372.86
+2026-05-01 21:45:24,247 INFO flow_id=beadf54c-db84-4ac7-82fb-59bb8eac83e8 prediction output eta_pred_sec=372.86 fare_pred=13.60 tolls_pred=0.00 total_no_tip=16.65 model_version=xgb_v1 eta_fallback_used=True
+INFO:     127.0.0.1:56924 - "POST /ml/v1/predict HTTP/1.1" 200 OK
+2026-05-01 21:45:27,186 INFO flow_id=660c28e8-c2fd-4be4-95c4-9de0995f31a2 received prediction request trip_distance=1.41 source_zone=164 destination_zone=246 pickup_hour=0 pickup_dow=2 pickup_month=10
+2026-05-01 21:45:27,198 WARNING flow_id=660c28e8-c2fd-4be4-95c4-9de0995f31a2 ETA model returned non-positive value raw_eta_pred_sec=-609.31; using fallback_eta_sec=452.57
+2026-05-01 21:45:27,219 INFO flow_id=660c28e8-c2fd-4be4-95c4-9de0995f31a2 prediction output eta_pred_sec=452.57 fare_pred=16.49 tolls_pred=0.00 total_no_tip=19.54 model_version=xgb_v1 eta_fallback_used=True
+INFO:     127.0.0.1:56924 - "POST /ml/v1/predict HTTP/1.1" 200 OK
+2026-05-01 21:45:29,360 INFO flow_id=51cbbbbc-03da-4222-9975-04440752424b received prediction request trip_distance=1.80 source_zone=137 destination_zone=232 pickup_hour=0 pickup_dow=2 pickup_month=10
+2026-05-01 21:45:29,371 WARNING flow_id=51cbbbbc-03da-4222-9975-04440752424b ETA model returned non-positive value raw_eta_pred_sec=-634.79; using fallback_eta_sec=552.86
+2026-05-01 21:45:29,386 INFO flow_id=51cbbbbc-03da-4222-9975-04440752424b prediction output eta_pred_sec=552.86 fare_pred=11.68 tolls_pred=0.00 total_no_tip=14.73 model_version=xgb_v1 eta_fallback_used=True
+INFO:     127.0.0.1:56924 - "POST /ml/v1/predict HTTP/1.1" 200 OK
+2026-05-01 21:45:31,595 INFO flow_id=a36524a2-478c-489a-8b2f-fedffcbbb846 received prediction request trip_distance=3.06 source_zone=140 destination_zone=238 pickup_hour=0 pickup_dow=2 pickup_month=10
+2026-05-01 21:45:31,605 WARNING flow_id=a36524a2-478c-489a-8b2f-fedffcbbb846 ETA model returned non-positive value raw_eta_pred_sec=-317.34; using fallback_eta_sec=876.86
+2026-05-01 21:45:31,622 INFO flow_id=a36524a2-478c-489a-8b2f-fedffcbbb846 prediction output eta_pred_sec=876.86 fare_pred=13.15 tolls_pred=0.00 total_no_tip=16.20 model_version=xgb_v1 eta_fallback_used=True
+INFO:     127.0.0.1:56924 - "POST /ml/v1/predict HTTP/1.1" 200 OK
+2026-05-01 21:45:34,572 INFO flow_id=8d5b0f1c-067f-4afd-be87-33f573aa92b0 received prediction request trip_distance=1.63 source_zone=164 destination_zone=79 pickup_hour=0 pickup_dow=2 pickup_month=10
+2026-05-01 21:45:34,581 WARNING flow_id=8d5b0f1c-067f-4afd-be87-33f573aa92b0 ETA model returned non-positive value raw_eta_pred_sec=-551.37; using fallback_eta_sec=509.14
+2026-05-01 21:45:34,599 INFO flow_id=8d5b0f1c-067f-4afd-be87-33f573aa92b0 prediction output eta_pred_sec=509.14 fare_pred=12.64 tolls_pred=0.00 total_no_tip=15.69 model_version=xgb_v1 eta_fallback_used=True
+INFO:     127.0.0.1:56924 - "POST /ml/v1/predict HTTP/1.1" 200 OK
+2026-05-01 21:45:38,300 INFO flow_id=6a484912-ba5f-4aff-b9e0-584b2d014093 received prediction request trip_distance=1.79 source_zone=43 destination_zone=186 pickup_hour=0 pickup_dow=2 pickup_month=10
+2026-05-01 21:45:38,311 WARNING flow_id=6a484912-ba5f-4aff-b9e0-584b2d014093 ETA model returned non-positive value raw_eta_pred_sec=-475.58; using fallback_eta_sec=550.29
+2026-05-01 21:45:38,327 INFO flow_id=6a484912-ba5f-4aff-b9e0-584b2d014093 prediction output eta_pred_sec=550.29 fare_pred=15.24 tolls_pred=0.00 total_no_tip=18.29 model_version=xgb_v1 eta_fallback_used=True
+INFO:     127.0.0.1:56924 - "POST /ml/v1/predict HTTP/1.1" 200 OK
+2026-05-01 21:45:40,627 INFO flow_id=0ca95ded-13f1-4082-8074-b448d3aa3167 received prediction request trip_distance=1.68 source_zone=90 destination_zone=211 pickup_hour=0 pickup_dow=2 pickup_month=10
+2026-05-01 21:45:40,635 WARNING flow_id=0ca95ded-13f1-4082-8074-b448d3aa3167 ETA model returned non-positive value raw_eta_pred_sec=-526.59; using fallback_eta_sec=522.00
+2026-05-01 21:45:40,651 INFO flow_id=0ca95ded-13f1-4082-8074-b448d3aa3167 prediction output eta_pred_sec=522.00 fare_pred=11.30 tolls_pred=0.00 total_no_tip=14.35 model_version=xgb_v1 eta_fallback_used=True
+INFO:     127.0.0.1:56924 - "POST /ml/v1/predict HTTP/1.1" 200 OK
+2026-05-01 21:45:42,683 INFO flow_id=4f0caff3-fe65-48fe-96c7-c3bf611f7afb received prediction request trip_distance=1.82 source_zone=114 destination_zone=100 pickup_hour=0 pickup_dow=2 pickup_month=10
+2026-05-01 21:45:42,694 WARNING flow_id=4f0caff3-fe65-48fe-96c7-c3bf611f7afb ETA model returned non-positive value raw_eta_pred_sec=-436.22; using fallback_eta_sec=558.00
+2026-05-01 21:45:42,710 INFO flow_id=4f0caff3-fe65-48fe-96c7-c3bf611f7afb prediction output eta_pred_sec=558.00 fare_pred=11.41 tolls_pred=0.00 total_no_tip=14.46 model_version=xgb_v1 eta_fallback_used=True
+INFO:     127.0.0.1:56924 - "POST /ml/v1/predict HTTP/1.1" 200 OK
+1f7afb prediction output eta_pred_sec=558.00 fare_pred=11.41 tolls_pred=0.00 total_no_tip=14.46 model_version=xgb_v1 eta_fallback_used=True

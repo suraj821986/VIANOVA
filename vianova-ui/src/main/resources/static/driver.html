@@ -613,12 +613,11 @@
 
             drivers.innerHTML = (data.availableDrivers || []).map(driver => `
                 <article class="driver-card">
-                    <strong>${driver.name}</strong>
-                    <div>${driver.vehicle}</div>
-                    <div>Arrives in ${driver.etaMinutes} mins</div>
-                    <div>Rating ${driver.rating}</div>
-                    <button class="secondary negotiate-btn" data-driver-id="${driver.driverId}" data-driver="${driver.name}" style="margin-top:8px;">Negotiate Fare</button>
-                </article>
+                <strong>${driver.name}</strong>
+                <div>${driver.vehicle}</div>
+                <div>Rating ${driver.rating}</div>
+                <button class="secondary negotiate-btn" data-driver-id="${driver.driverId}" data-driver="${driver.name}" style="margin-top:8px;">Negotiate Fare</button>
+            </article>
             `).join("");
 
             document.querySelectorAll(".negotiate-btn").forEach((btn) => {

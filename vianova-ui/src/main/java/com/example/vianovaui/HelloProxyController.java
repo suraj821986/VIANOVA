@@ -62,6 +62,11 @@ public class HelloProxyController {
         return forwardJson("/rides/options", payload);
     }
 
+    @PostMapping(value = "/api/rides/accuracy-check", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<String> accuracyCheck(@RequestBody String payload) {
+        return forwardJson("/rides/accuracy-check", payload);
+    }
+
     @PostMapping(value = "/api/rides/negotiate", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<String> negotiateFare(@RequestBody String payload) {
         return forwardJson("/rides/negotiate", payload);
